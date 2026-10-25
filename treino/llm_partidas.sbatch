@@ -2,7 +2,7 @@
 # Plays whole auto battles narrated by each model (tools/narrator_play.cpp):
 # scenarios x class pairs x seeds, measuring time per round and repetition.
 # Results in treino/partidas_<model>_<job>.jsonl, summary in the log.
-#   sbatch --export=ALL,MODELOS="8B 1.7B 0.6B",SEMENTES=2 treino/llm_partidas.sbatch
+#   sbatch --export=ALL,MODELOS=8B,SEMENTES=2 treino/llm_partidas.sbatch
 # RESERVA=banco lets the phrase bank cover the rounds the model misses.
 # ANTERIORES=N overrides how many previous narrations the model sees (mestre.json).
 #SBATCH -J llm_partidas

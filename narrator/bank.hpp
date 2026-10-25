@@ -17,9 +17,8 @@
 
 namespace rpg::narrator {
 
-// Phrases written ahead of time by the model (tools/narrator_bank.cpp on
-// lab10), so the game narrates without one: instantly, offline, on weak
-// hardware. Phrases use the same marks as the event texts ({ator}, {alvo}...).
+// Phrases written ahead of time (data/narrator/banco.json, by hand), so the
+// game narrates without a model: instantly, offline, on weak hardware. Phrases use the same marks as the event texts ({ator}, {alvo}...).
 struct PhraseBank {
     int events_per_round = 3;  // most striking events narrated each round
     std::vector<std::string> openings;  // with {cenario}

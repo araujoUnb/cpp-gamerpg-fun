@@ -8,11 +8,14 @@
 #include "data/content.hpp"
 #include "data/data_error.hpp"
 #include "data/default_hero.hpp"
+#include "data/json_io.hpp"
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
+#include <filesystem>
 #include <mutex>
 #include <vector>
 
@@ -556,4 +559,28 @@ TEST_CASE("the bank tells what the model leaves untold and keeps what the model 
     CHECK(both->text == "Do banco.");
     CHECK(both->lines == model.lines);
     CHECK(cover(model, std::nullopt)->lines == model.lines);
+}
+
+TEST_CASE("every phrase in the shipped bank keeps its marks and fits any character") {
+    const std::filesystem::path dir = std::filesystem::path(GAMERPG_DATA_DIR) / "narrator";
+    const auto bank = load_bank(dir / "banco.json");
+    const auto spec = data::read_json_file(dir / "banco_instrucoes.json")["eventos"];
+    auto check = [](const std::string& key, const std::vector<std::string>& phrases, const json& marks) {
+        INFO(key);
+        CHECK(phrases.size() >= 8);
+        const auto wanted = marks.get<std::vector<std::string>>();
+        for (std::size_t i = 0; i < phrases.size(); ++i) {
+            INFO(phrases[i]);
+            CHECK(valid_phrase(phrases[i], wanted));
+            CHECK(std::find(phrases.begin(), phrases.begin() + static_cast<std::ptrdiff_t>(i), phrases[i]) ==
+                  phrases.begin() + static_cast<std::ptrdiff_t>(i));
+        }
+    };
+    check("abertura", bank.openings, spec["abertura"]["marcadores"]);
+    for (const auto& [key, s] : spec.items()) {
+        if (key == "abertura") continue;
+        const auto* phrases = bank.find(key);
+        REQUIRE_MESSAGE(phrases, key);
+        check(key, *phrases, s["marcadores"]);
+    }
 }

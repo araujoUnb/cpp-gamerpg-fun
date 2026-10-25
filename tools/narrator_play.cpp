@@ -127,11 +127,13 @@ int main(int argc, char** argv) {
 
                     std::vector<std::string> seen;  // sentences already told in this battle
                     json texts = json::array();
+                    json situations = json::array();  // what each narration was about, for judging it later
+                    using Ask = std::function<std::optional<narrator::Narration>(const json&)>;
                     // `spare` is the bank's narration, used when the model leaves the round untold.
-                    auto narrate = [&](const std::function<std::optional<narrator::Narration>()>& ask,
-                                       const std::function<std::optional<narrator::Narration>()>& spare) {
+                    auto narrate = [&](json situation, const Ask& ask, const std::function<std::optional<narrator::Narration>()>& spare) {
                         const auto t0 = Clock::now();
-                        auto n = ask();
+                        auto n = ask(situation);
+                        situations.push_back(std::move(situation));
                         bool spared = false;
                         if (narrator::needs_cover(n) && spare) {
                             auto b = spare();
@@ -159,16 +161,15 @@ int main(int argc, char** argv) {
                         if (spared) t["banco"] = true;
                         texts.push_back(std::move(t));
                     };
-                    auto from_model = [&](json situation) {
-                        model->request(std::move(situation));
+                    auto from_model = [&](const json& situation) {
+                        model->request(situation);
                         // Wait a little past the limit so slow replies are still measured.
                         return model->receive(limit * 2);
                     };
 
                     const std::function<std::optional<narrator::Narration>()> none;
-                    if (use_bank) narrate([&] { return teller->opening(c); }, none);
-                    else narrate([&] { return from_model(narrator::opening_situation(c)); },
-                                 o.fallback ? [&] { return teller->opening(c); } : none);
+                    if (use_bank) narrate(narrator::opening_situation(c), [&](const json&) { return teller->opening(c); }, none);
+                    else narrate(narrator::opening_situation(c), from_model, o.fallback ? [&] { return teller->opening(c); } : none);
 
                     std::size_t first = 0, shown = 0;
                     bool ended = false;
@@ -178,9 +179,9 @@ int main(int argc, char** argv) {
                             const bool end = e.kind == combat::Event::Kind::Victory || e.kind == combat::Event::Kind::Defeat;
                             if (ended || (!end && e.kind != combat::Event::Kind::RoundEnded)) continue;
                             const auto from_bank_round = [&] { return teller->round(c, first, shown); };
-                            if (use_bank) narrate(from_bank_round, none);
-                            else narrate([&] { return from_model(narrator::round_situation(c, first, shown)); },
-                                         o.fallback ? from_bank_round : none);
+                            auto situation = narrator::round_situation(c, first, shown);
+                            if (use_bank) narrate(std::move(situation), [&](const json&) { return from_bank_round(); }, none);
+                            else narrate(std::move(situation), from_model, o.fallback ? from_bank_round : none);
                             first = shown;
                             ended = end;
                         }
@@ -196,7 +197,7 @@ int main(int argc, char** argv) {
                     for (const auto& cl : classes) party_id += (party_id.empty() ? "" : "+") + cl;
                     out << json{{"cenario", scenario_id}, {"classes", party_id}, {"semente", seed}, {"rodadas", c.round()},
                                 {"resultado", c.outcome() == combat::Outcome::Victory ? "vitoria" : "derrota"},
-                                {"narracoes", texts}}.dump()
+                                {"narracoes", texts}, {"situacoes", situations}}.dump()
                         << '\n' << std::flush;
                     std::cout << scenario_id << " " << party_id << " semente " << seed << ": " << c.round() << " rodadas\n"
                               << std::flush;
