@@ -91,12 +91,21 @@ Turno de cada herói:
 
 Ataques feitos por cartas usam o d20 contra a CA do alvo. O valor da carta é o dano base, somado ao modificador do atributo da classe.
 
+Detalhes definidos na etapa 3:
+
+- A ordem das duas cartas escolhidas importa: a primeira define a iniciativa.
+- Trocar uma metade por ação básica nunca perde a carta, mesmo que aquela metade seja perdível.
+- Cada carta é uma lista de ações por metade, com os tipos `move`, `attack`, `heal` e `condition`, e cada tipo aceita só os campos que fazem sentido para ele. O formato está em `data/cards/*.json`.
+- O baralho do herói tem exatamente o tamanho da mão da classe, com cartas da própria classe e de nível até o nível do herói. Ele fica guardado na ficha.
+- Os números das cartas (ação básica, mínimo de cartas no descarte para descansar, cura e iniciativa do descanso longo) ficam em `ruleset.json`.
+
 ### Descanso e exaustão
 
 - O tamanho da mão é definido pela classe, entre 8 e 12 cartas, e é a resistência do herói
 - **Descanso curto:** no fim da rodada, embaralha o descarte, perde uma carta aleatória e recupera o resto
 - **Descanso longo:** usa a rodada inteira, escolhe qual carta perder, recupera o descarte e cura 2 PV
 - Um herói fica **exausto** e sai do cenário se não tiver cartas suficientes para jogar duas ou se chegar a 0 PV, depois de falhar nos testes de morte
+- Os dois descansos exigem pelo menos 2 cartas no descarte. Com menos de 2 cartas na mão, o herói é obrigado a descansar. Se nem isso for possível, ele fica exausto.
 - Isso cria a pressão de tempo do cenário, porque cada carta perdida aproxima a exaustão
 
 ### Monstros
@@ -107,7 +116,7 @@ Ataques feitos por cartas usam o d20 contra a CA do alvo. O valor da carta é o 
 
 ### Condições
 
-Começar com poucas: envenenado, atordoado, imobilizado, fortalecido, protegido. Cada uma com duração em rodadas e efeito declarado em JSON.
+Começar com poucas: envenenado, atordoado, imobilizado, fortalecido, protegido. Cada uma com duração em rodadas e efeito declarado em JSON. Os efeitos descritos hoje em `pt-BR.json` (envenenado: +1 de dano recebido; atordoado: perde o turno; imobilizado: não se move; fortalecido: ataca com vantagem; protegido: −1 de dano por ataque) são provisórios até a etapa 4.
 
 ### Tabuleiro
 

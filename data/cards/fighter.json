@@ -1,0 +1,398 @@
+{
+  "class": "fighter",
+  "cards": [
+    {
+      "id": "fighter.steady_strike",
+      "level": 1,
+      "name": "card.fighter.steady_strike.name",
+      "initiative": 35,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.charge",
+      "level": 1,
+      "name": "card.fighter.charge.name",
+      "initiative": 20,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "push": 1
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.raised_shield",
+      "level": 1,
+      "name": "card.fighter.raised_shield.name",
+      "initiative": 15,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.stunning_blow",
+      "level": 1,
+      "name": "card.fighter.stunning_blow.name",
+      "initiative": 60,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "conditions": [
+              {
+                "id": "stunned",
+                "rounds": 1
+              }
+            ]
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.sweep",
+      "level": 1,
+      "name": "card.fighter.sweep.name",
+      "initiative": 45,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "targets": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.war_cry",
+      "level": 1,
+      "name": "card.fighter.war_cry.name",
+      "initiative": 30,
+      "top": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "strengthened",
+                "rounds": 2
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.defensive_stance",
+      "level": 1,
+      "name": "card.fighter.defensive_stance.name",
+      "initiative": 10,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 2
+              }
+            ]
+          }
+        ],
+        "lose": true
+      }
+    },
+    {
+      "id": "fighter.brutal_advance",
+      "level": 1,
+      "name": "card.fighter.brutal_advance.name",
+      "initiative": 50,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "push": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.deep_breath",
+      "level": 1,
+      "name": "card.fighter.deep_breath.name",
+      "initiative": 70,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 4,
+            "target": "self"
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.heavy_blade",
+      "level": 1,
+      "name": "card.fighter.heavy_blade.name",
+      "initiative": 55,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 5
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.firm_step",
+      "level": 1,
+      "name": "card.fighter.firm_step.name",
+      "initiative": 25,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          },
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.crushing_blow",
+      "level": 2,
+      "name": "card.fighter.crushing_blow.name",
+      "initiative": 40,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "conditions": [
+              {
+                "id": "immobilized",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.steel_wall",
+      "level": 2,
+      "name": "card.fighter.steel_wall.name",
+      "initiative": 12,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.steel_fury",
+      "level": 3,
+      "name": "card.fighter.steel_fury.name",
+      "initiative": 65,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "targets": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "fighter.takedown",
+      "level": 3,
+      "name": "card.fighter.takedown.name",
+      "initiative": 33,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "conditions": [
+              {
+                "id": "stunned",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3,
+            "jump": true
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 #include "data/json_io.hpp"
 
 #include "data/data_error.hpp"
+#include "data/json_helpers.hpp"
 
 #include <fstream>
 #include <set>
@@ -9,69 +10,7 @@ namespace rpg::data {
 
 using character::Attribute;
 
-namespace {
-
-[[noreturn]] void fail(const std::string& where, const std::string& what) {
-    throw DataError(where + ": " + what);
-}
-
-std::string quoted(const char* key) {
-    return std::string("'") + key + "'";
-}
-
-const json& field(const json& j, const char* key, const std::string& where) {
-    if (!j.is_object()) fail(where, "expected an object");
-    const auto it = j.find(key);
-    if (it == j.end()) fail(where, "missing field " + quoted(key));
-    return *it;
-}
-
-int get_int(const json& j, const char* key, const std::string& where) {
-    const auto& v = field(j, key, where);
-    if (!v.is_number_integer()) fail(where, quoted(key) + " must be an integer");
-    return v.get<int>();
-}
-
-std::string get_string(const json& j, const char* key, const std::string& where) {
-    const auto& v = field(j, key, where);
-    if (!v.is_string()) fail(where, quoted(key) + " must be a string");
-    return v.get<std::string>();
-}
-
-std::string get_string_or(const json& j, const char* key, const std::string& where) {
-    if (!j.contains(key)) return {};
-    return get_string(j, key, where);
-}
-
-const json& get_array(const json& j, const char* key, const std::string& where) {
-    const auto& v = field(j, key, where);
-    if (!v.is_array()) fail(where, quoted(key) + " must be an array");
-    return v;
-}
-
-Attribute attribute_from_json(const json& v, const std::string& where) {
-    if (!v.is_string()) fail(where, "attribute must be a string");
-    const auto a = character::parse_attribute(v.get<std::string>());
-    if (!a) fail(where, "unknown attribute '" + v.get<std::string>() + "'");
-    return *a;
-}
-
-character::IntRange range_from_json(const json& j, const std::string& where) {
-    character::IntRange r{get_int(j, "min", where), get_int(j, "max", where)};
-    if (r.min > r.max) fail(where, "'min' must not exceed 'max'");
-    return r;
-}
-
-std::vector<std::string> string_list(const json& arr, const std::string& where) {
-    std::vector<std::string> out;
-    for (const auto& v : arr) {
-        if (!v.is_string()) fail(where, "expected a list of strings");
-        out.push_back(v.get<std::string>());
-    }
-    return out;
-}
-
-}  // namespace
+using namespace detail;
 
 json read_json_file(const std::filesystem::path& path) {
     std::ifstream in(path);
@@ -84,6 +23,7 @@ json read_json_file(const std::filesystem::path& path) {
 }
 
 character::Ruleset ruleset_from_json(const json& j, const std::string& where) {
+    only_keys(j, {"attribute_score", "hand_size", "proficiency_by_level", "skills", "conditions", "cards"}, where);
     character::Ruleset r;
     r.attribute_score = range_from_json(field(j, "attribute_score", where), where + ".attribute_score");
     r.hand_size = range_from_json(field(j, "hand_size", where), where + ".hand_size");
@@ -98,12 +38,45 @@ character::Ruleset ruleset_from_json(const json& j, const std::string& where) {
     std::set<std::string> ids;
     for (const auto& s : get_array(j, "skills", where)) {
         const std::string ctx = where + ".skills";
+        only_keys(s, {"id", "attribute", "name"}, ctx);
         character::SkillDef skill;
         skill.id = get_string(s, "id", ctx);
         skill.attribute = attribute_from_json(field(s, "attribute", ctx), ctx + " [" + skill.id + "]");
         skill.name_key = get_string(s, "name", ctx);
         if (!ids.insert(skill.id).second) fail(ctx, "duplicate skill '" + skill.id + "'");
         r.skills.push_back(std::move(skill));
+    }
+
+    ids.clear();
+    for (const auto& c : get_array(j, "conditions", where)) {
+        const std::string ctx = where + ".conditions";
+        only_keys(c, {"id", "name", "description"}, ctx);
+        character::ConditionDef cond;
+        cond.id = get_string(c, "id", ctx);
+        cond.name_key = get_string(c, "name", ctx);
+        cond.description_key = get_string_or(c, "description", ctx);
+        if (!ids.insert(cond.id).second) fail(ctx, "duplicate condition '" + cond.id + "'");
+        r.conditions.push_back(std::move(cond));
+    }
+
+    const std::string cctx = where + ".cards";
+    const auto& cards = field(j, "cards", where);
+    only_keys(cards, {"initiative", "basic_attack", "basic_move", "rest_min_discard", "long_rest_heal",
+                      "long_rest_initiative"}, cctx);
+    auto& cr = r.cards;
+    cr.initiative = range_from_json(field(cards, "initiative", cctx), cctx + ".initiative");
+    cr.basic_attack = get_int(cards, "basic_attack", cctx);
+    cr.basic_move = get_int(cards, "basic_move", cctx);
+    cr.rest_min_discard = get_int(cards, "rest_min_discard", cctx);
+    cr.long_rest_heal = get_int(cards, "long_rest_heal", cctx);
+    cr.long_rest_initiative = get_int(cards, "long_rest_initiative", cctx);
+    if (cr.initiative.min < 0) fail(cctx, "'initiative.min' must not be negative");
+    if (cr.basic_attack < 0 || cr.basic_move < 0 || cr.long_rest_heal < 0) {
+        fail(cctx, "basic actions and healing must not be negative");
+    }
+    if (cr.rest_min_discard < 1) fail(cctx, "'rest_min_discard' must be at least 1");
+    if (!cr.initiative.contains(cr.long_rest_initiative)) {
+        fail(cctx, "'long_rest_initiative' must be inside the initiative range");
     }
     return r;
 }
@@ -129,6 +102,8 @@ json to_json(const character::AttributeScores& scores) {
 }
 
 character::ClassDef class_from_json(const json& j, const character::Ruleset& rules, const std::string& where) {
+    only_keys(j, {"id", "name", "description", "primary_attribute", "hand_size", "hit_points", "armor_class",
+                  "saving_throws", "skill_choice", "suggested_attributes", "visual"}, where);
     character::ClassDef c;
     c.id = get_string(j, "id", where);
     if (c.id.empty()) fail(where, "'id' must not be empty");
@@ -145,12 +120,14 @@ character::ClassDef class_from_json(const json& j, const character::Ruleset& rul
     }
 
     const auto& hp = field(j, "hit_points", ctx);
+    only_keys(hp, {"base", "per_level"}, ctx + ".hit_points");
     c.hp_base = get_int(hp, "base", ctx + ".hit_points");
     c.hp_per_level = get_int(hp, "per_level", ctx + ".hit_points");
     if (c.hp_base < 1) fail(ctx, "'hit_points.base' must be at least 1");
     if (c.hp_per_level < 0) fail(ctx, "'hit_points.per_level' must not be negative");
 
     const auto& ac = field(j, "armor_class", ctx);
+    only_keys(ac, {"base", "max_dex_bonus", "extra_attribute"}, ctx + ".armor_class");
     c.armor.base = get_int(ac, "base", ctx + ".armor_class");
     if (ac.contains("max_dex_bonus")) c.armor.max_dex_bonus = get_int(ac, "max_dex_bonus", ctx + ".armor_class");
     if (ac.contains("extra_attribute")) {
@@ -163,6 +140,7 @@ character::ClassDef class_from_json(const json& j, const character::Ruleset& rul
 
     const std::string sctx = ctx + ".skill_choice";
     const auto& sc = field(j, "skill_choice", ctx);
+    only_keys(sc, {"count", "options"}, sctx);
     c.skill_choice.count = get_int(sc, "count", sctx);
     const auto& opts = field(sc, "options", sctx);
     if (opts.is_string() && opts.get<std::string>() == "any") {
@@ -191,6 +169,7 @@ character::ClassDef class_from_json(const json& j, const character::Ruleset& rul
 
     if (j.contains("visual")) {
         const auto& v = j["visual"];
+        only_keys(v, {"color", "portrait"}, ctx + ".visual");
         c.visual.color = get_string_or(v, "color", ctx + ".visual");
         c.visual.portrait = get_string_or(v, "portrait", ctx + ".visual");
     }
@@ -205,12 +184,14 @@ json to_json(const character::CharacterSheet& sheet) {
         {"level", sheet.level},
         {"attributes", to_json(sheet.attributes)},
         {"skills", sheet.skills},
+        {"deck", sheet.deck},
         {"current_hp", sheet.current_hp},
     };
 }
 
 character::CharacterSheet sheet_from_json(const json& j, const character::Ruleset& rules,
                                           const character::ClassDef& cls, const std::string& where) {
+    only_keys(j, {"id", "name", "class", "level", "attributes", "skills", "deck", "current_hp"}, where);
     character::CharacterSheet s;
     s.id = get_string(j, "id", where);
     s.name = get_string(j, "name", where);
@@ -218,6 +199,7 @@ character::CharacterSheet sheet_from_json(const json& j, const character::Rulese
     s.level = get_int(j, "level", where);
     s.attributes = attributes_from_json(field(j, "attributes", where), where + ".attributes");
     s.skills = string_list(get_array(j, "skills", where), where + ".skills");
+    s.deck = string_list(get_array(j, "deck", where), where + ".deck");
     s.current_hp = get_int(j, "current_hp", where);
     try {
         character::validate(rules, s, cls);
@@ -232,10 +214,11 @@ json to_json(const dice::Rng::State& state) {
 }
 
 dice::Rng::State rng_state_from_json(const json& j, const std::string& where) {
+    only_keys(j, {"state", "inc"}, where);
     dice::Rng::State s;
     for (auto [key, out] : {std::pair{"state", &s.state}, std::pair{"inc", &s.inc}}) {
         const auto& v = field(j, key, where);
-        if (!v.is_number_unsigned()) fail(where, quoted(key) + " must be an unsigned integer");
+        if (!v.is_number_unsigned()) fail(where, quote_key(key) + " must be an unsigned integer");
         *out = v.get<std::uint64_t>();
     }
     if ((s.inc & 1u) == 0) fail(where, "'inc' must be odd");

@@ -1,0 +1,383 @@
+{
+  "class": "wizard",
+  "cards": [
+    {
+      "id": "wizard.arcane_bolt",
+      "level": 1,
+      "name": "card.wizard.arcane_bolt.name",
+      "initiative": 30,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "range": 4
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.frost_breath",
+      "level": 1,
+      "name": "card.wizard.frost_breath.name",
+      "initiative": 45,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 3,
+            "conditions": [
+              {
+                "id": "immobilized",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.flame_burst",
+      "level": 1,
+      "name": "card.wizard.flame_burst.name",
+      "initiative": 70,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "range": 3,
+            "targets": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.arcane_aegis",
+      "level": 1,
+      "name": "card.wizard.arcane_aegis.name",
+      "initiative": 10,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.lightning",
+      "level": 1,
+      "name": "card.wizard.lightning.name",
+      "initiative": 60,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 5,
+            "range": 4,
+            "targets": 2
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.ethereal_step",
+      "level": 1,
+      "name": "card.wizard.ethereal_step.name",
+      "initiative": 20,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4,
+            "jump": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.sparking_touch",
+      "level": 1,
+      "name": "card.wizard.sparking_touch.name",
+      "initiative": 25,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "conditions": [
+              {
+                "id": "stunned",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.glimmer_darts",
+      "level": 1,
+      "name": "card.wizard.glimmer_darts.name",
+      "initiative": 40,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 4,
+            "targets": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.arcane_focus",
+      "level": 1,
+      "name": "card.wizard.arcane_focus.name",
+      "initiative": 80,
+      "top": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "strengthened",
+                "rounds": 2
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.arcane_prison",
+      "level": 1,
+      "name": "card.wizard.arcane_prison.name",
+      "initiative": 15,
+      "top": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "enemy",
+            "conditions": [
+              {
+                "id": "stunned",
+                "rounds": 1
+              }
+            ],
+            "range": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.ice_lance",
+      "level": 2,
+      "name": "card.wizard.ice_lance.name",
+      "initiative": 35,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "range": 4,
+            "conditions": [
+              {
+                "id": "immobilized",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.shimmering_ward",
+      "level": 2,
+      "name": "card.wizard.shimmering_ward.name",
+      "initiative": 5,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "range": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "ally",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 2
+              }
+            ],
+            "range": 3
+          }
+        ],
+        "lose": true
+      }
+    },
+    {
+      "id": "wizard.arcane_storm",
+      "level": 3,
+      "name": "card.wizard.arcane_storm.name",
+      "initiative": 85,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 5,
+            "range": 4,
+            "targets": 4
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "wizard.drain_vitality",
+      "level": 3,
+      "name": "card.wizard.drain_vitality.name",
+      "initiative": 50,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "range": 3
+          },
+          {
+            "type": "heal",
+            "value": 3,
+            "target": "self"
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    }
+  ]
+}

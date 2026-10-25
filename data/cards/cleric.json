@@ -1,0 +1,404 @@
+{
+  "class": "cleric",
+  "cards": [
+    {
+      "id": "cleric.restoring_word",
+      "level": 1,
+      "name": "card.cleric.restoring_word.name",
+      "initiative": 40,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 3,
+            "target": "ally",
+            "range": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.holy_strike",
+      "level": 1,
+      "name": "card.cleric.holy_strike.name",
+      "initiative": 35,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.radiant_flash",
+      "level": 1,
+      "name": "card.cleric.radiant_flash.name",
+      "initiative": 50,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "range": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.divine_grace",
+      "level": 1,
+      "name": "card.cleric.divine_grace.name",
+      "initiative": 25,
+      "top": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "ally",
+            "conditions": [
+              {
+                "id": "strengthened",
+                "rounds": 2
+              }
+            ],
+            "range": 3,
+            "targets": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.aegis_of_faith",
+      "level": 1,
+      "name": "card.cleric.aegis_of_faith.name",
+      "initiative": 15,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "ally",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 2
+              }
+            ],
+            "range": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.healing_prayer",
+      "level": 1,
+      "name": "card.cleric.healing_prayer.name",
+      "initiative": 75,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 3,
+            "target": "ally",
+            "range": 3,
+            "targets": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.blinding_light",
+      "level": 1,
+      "name": "card.cleric.blinding_light.name",
+      "initiative": 20,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 2,
+            "conditions": [
+              {
+                "id": "stunned",
+                "rounds": 1
+              }
+            ]
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.hammer_of_justice",
+      "level": 1,
+      "name": "card.cleric.hammer_of_justice.name",
+      "initiative": 45,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.purify",
+      "level": 1,
+      "name": "card.cleric.purify.name",
+      "initiative": 30,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 2,
+            "target": "ally",
+            "range": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.protective_aura",
+      "level": 1,
+      "name": "card.cleric.protective_aura.name",
+      "initiative": 55,
+      "top": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "ally",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 1
+              }
+            ],
+            "range": 2,
+            "targets": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.brief_prayer",
+      "level": 1,
+      "name": "card.cleric.brief_prayer.name",
+      "initiative": 65,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 4,
+            "target": "ally",
+            "range": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.judgment",
+      "level": 2,
+      "name": "card.cleric.judgment.name",
+      "initiative": 38,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "range": 3,
+            "targets": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.infuse_vigor",
+      "level": 2,
+      "name": "card.cleric.infuse_vigor.name",
+      "initiative": 28,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 3,
+            "target": "ally",
+            "range": 3,
+            "conditions": [
+              {
+                "id": "strengthened",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.divine_light",
+      "level": 3,
+      "name": "card.cleric.divine_light.name",
+      "initiative": 60,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "range": 4,
+            "targets": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 2,
+            "target": "ally",
+            "range": 3,
+            "targets": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "cleric.intervention",
+      "level": 3,
+      "name": "card.cleric.intervention.name",
+      "initiative": 90,
+      "top": {
+        "actions": [
+          {
+            "type": "heal",
+            "value": 6,
+            "target": "ally",
+            "range": 4
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "condition",
+            "target": "ally",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 2
+              }
+            ],
+            "range": 3
+          }
+        ]
+      }
+    }
+  ]
+}

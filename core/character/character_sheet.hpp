@@ -19,6 +19,7 @@ struct CharacterSheet {
     int level = 1;
     AttributeScores attributes;
     std::vector<std::string> skills;  // proficient skill ids
+    std::vector<std::string> deck;    // card ids; checked by cards::validate_deck
     int current_hp = 0;
 
     friend bool operator==(const CharacterSheet&, const CharacterSheet&) = default;

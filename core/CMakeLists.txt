@@ -15,9 +15,14 @@ add_library(gamerpg_core STATIC
     character/attributes.cpp
     character/ruleset.cpp
     character/character_sheet.cpp
+    cards/card_def.cpp
+    cards/card_registry.cpp
+    cards/deck.cpp
+    cards/hero_cards.cpp
     data/json_io.cpp
     data/class_registry.cpp
     data/text_table.cpp
+    data/card_io.cpp
 )
 add_library(gamerpg::core ALIAS gamerpg_core)
 

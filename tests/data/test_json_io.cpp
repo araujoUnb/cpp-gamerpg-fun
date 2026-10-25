@@ -142,6 +142,11 @@ TEST_CASE("Invalid classes report file and reason") {
         j["id"] = "";
         expect_class_error(j, "id");
     }
+    {
+        auto j = valid_class();
+        j["hit_points"]["perlevel"] = 6;
+        expect_class_error(j, "perlevel");
+    }
     expect_class_error(json::array(), "object");
 }
 
@@ -150,7 +155,10 @@ TEST_CASE("Ruleset loads and validates") {
         "attribute_score": { "min": 3, "max": 18 },
         "hand_size": { "min": 6, "max": 14 },
         "proficiency_by_level": [1, 2, 3],
-        "skills": [ { "id": "stealth", "attribute": "dex", "name": "skill.stealth.name" } ]
+        "skills": [ { "id": "stealth", "attribute": "dex", "name": "skill.stealth.name" } ],
+        "conditions": [ { "id": "stunned", "name": "condition.stunned.name" } ],
+        "cards": { "initiative": { "min": 1, "max": 50 }, "basic_attack": 1, "basic_move": 3,
+                   "rest_min_discard": 3, "long_rest_heal": 1, "long_rest_initiative": 50 }
     })");
     const auto r = ruleset_from_json(j);
     CHECK(r.attribute_score.min == 3);
@@ -158,6 +166,11 @@ TEST_CASE("Ruleset loads and validates") {
     CHECK(r.max_level() == 3);
     REQUIRE(r.find_skill("stealth") != nullptr);
     CHECK(r.find_skill("stealth")->attribute == Attribute::Dexterity);
+    CHECK(r.find_condition("stunned") != nullptr);
+    CHECK(r.find_condition("poisoned") == nullptr);
+    CHECK(r.cards.initiative.max == 50);
+    CHECK(r.cards.basic_move == 3);
+    CHECK(r.cards.rest_min_discard == 3);
 
     auto bad = j;
     bad["proficiency_by_level"] = json::array();
@@ -170,6 +183,18 @@ TEST_CASE("Ruleset loads and validates") {
     bad = j;
     bad["skills"].push_back(j["skills"][0]);
     CHECK_THROWS_AS(ruleset_from_json(bad), DataError);
+
+    bad = j;
+    bad["cards"]["long_rest_initiative"] = 99;
+    CHECK_THROWS_AS(ruleset_from_json(bad), DataError);
+
+    bad = j;
+    bad["cards"]["rest_min_discard"] = 0;
+    CHECK_THROWS_AS(ruleset_from_json(bad), DataError);
+
+    bad = j;
+    bad["handsize"] = 3;  // typo
+    CHECK_THROWS_AS(ruleset_from_json(bad), DataError);
 }
 
 TEST_CASE("Character sheets round-trip through JSON") {
@@ -179,6 +204,7 @@ TEST_CASE("Character sheets round-trip through JSON") {
                                             {"athletics", "stealth"});
     character::level_up(rules, hero, cls);
     hero.current_hp -= 3;
+    hero.deck = {"fighter.a", "fighter.b"};
 
     const auto j = to_json(hero);
     CHECK(sheet_from_json(j, rules, cls) == hero);
@@ -200,6 +226,10 @@ TEST_CASE("Loading a sheet that breaks the rules fails") {
 
     j = to_json(hero);
     j.erase("skills");
+    CHECK_THROWS_AS(sheet_from_json(j, rules, cls), DataError);
+
+    j = to_json(hero);
+    j["nivel"] = 2;  // unknown field
     CHECK_THROWS_AS(sheet_from_json(j, rules, cls), DataError);
 }
 

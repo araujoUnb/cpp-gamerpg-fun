@@ -1,6 +1,8 @@
 // Validates the real files in data/. A broken content file fails the build's
 // tests instead of failing at runtime.
 #include "character/character_sheet.hpp"
+#include "cards/deck.hpp"
+#include "data/card_io.hpp"
 #include "data/class_registry.hpp"
 #include "data/json_io.hpp"
 #include "data/text_table.hpp"
@@ -102,4 +104,46 @@ TEST_CASE("Known values from the SRD-style tables") {
     CHECK(character::max_hp(w, wiz) == 6 + 2);
     CHECK(character::armor_class(w, wiz) == 10 + 1);
     CHECK(character::check_modifier(rules, w, wiz, character::CheckSpec::of_skill("arcana")) == 2 + 2);
+}
+
+TEST_CASE("Cards of the first four classes load and fit the rules") {
+    const auto rules = load_rules();
+    const auto classes = data::load_classes(kData / "classes", rules);
+    const auto cards = data::load_cards(kData / "cards", rules, classes);
+    const auto text = data::load_text_table(kData / "lang" / "pt-BR.json");
+
+    for (const std::string id : {"fighter", "rogue", "wizard", "cleric"}) {
+        CAPTURE(id);
+        const auto& cls = classes.get(id);
+        const auto upto3 = cards.available(id, 3);
+        CHECK(upto3.size() >= 12);
+        CHECK(upto3.size() <= 15);
+
+        // A level-1 hero must be able to build a full deck, with at least one card to spare.
+        const auto level1 = cards.available(id, 1);
+        CHECK(static_cast<int>(level1.size()) > cls.hand_size);
+        // Each new level unlocks something.
+        CHECK(cards.available(id, 2).size() > level1.size());
+        CHECK(upto3.size() > cards.available(id, 2).size());
+
+        const std::vector<std::string> deck(level1.begin(), level1.begin() + cls.hand_size);
+        CHECK_NOTHROW(cards::validate_deck(cards, cls, 1, deck));
+
+        int losses = 0;
+        for (const auto& card_id : upto3) {
+            const auto& card = cards.get(card_id);
+            CAPTURE(card_id);
+            CHECK(text.contains(card.name_key));
+            CHECK_FALSE(card.top.actions.empty());
+            CHECK_FALSE(card.bottom.actions.empty());
+            losses += card.top.lose || card.bottom.lose;
+        }
+        // Loss cards are what make a scenario finite; every class needs some, but not too many.
+        CHECK(losses >= 2);
+        CHECK(losses <= static_cast<int>(upto3.size()) / 2);
+    }
+    for (const auto& c : rules.conditions) {
+        CHECK(text.contains(c.name_key));
+        CHECK(text.contains(c.description_key));
+    }
 }

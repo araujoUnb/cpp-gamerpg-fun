@@ -18,4 +18,11 @@ const SkillDef* Ruleset::find_skill(const std::string& id) const {
     return nullptr;
 }
 
+const ConditionDef* Ruleset::find_condition(const std::string& id) const {
+    for (const auto& c : conditions) {
+        if (c.id == id) return &c;
+    }
+    return nullptr;
+}
+
 }  // namespace rpg::character

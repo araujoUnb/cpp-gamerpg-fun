@@ -1,0 +1,387 @@
+{
+  "class": "rogue",
+  "cards": [
+    {
+      "id": "rogue.quick_dagger",
+      "level": 1,
+      "name": "card.rogue.quick_dagger.name",
+      "initiative": 8,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.backstab",
+      "level": 1,
+      "name": "card.rogue.backstab.name",
+      "initiative": 18,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "advantage": true
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.poisoned_blade",
+      "level": 1,
+      "name": "card.rogue.poisoned_blade.name",
+      "initiative": 22,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "conditions": [
+              {
+                "id": "poisoned",
+                "rounds": 2
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.acrobatic_leap",
+      "level": 1,
+      "name": "card.rogue.acrobatic_leap.name",
+      "initiative": 6,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4,
+            "jump": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.dagger_throw",
+      "level": 1,
+      "name": "card.rogue.dagger_throw.name",
+      "initiative": 15,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 3,
+            "targets": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.treacherous_cut",
+      "level": 1,
+      "name": "card.rogue.treacherous_cut.name",
+      "initiative": 30,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 6,
+            "advantage": true
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.into_shadows",
+      "level": 1,
+      "name": "card.rogue.into_shadows.name",
+      "initiative": 4,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          },
+          {
+            "type": "condition",
+            "target": "self",
+            "conditions": [
+              {
+                "id": "protected",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.hamstring",
+      "level": 1,
+      "name": "card.rogue.hamstring.name",
+      "initiative": 25,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "conditions": [
+              {
+                "id": "immobilized",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.quick_escape",
+      "level": 1,
+      "name": "card.rogue.quick_escape.name",
+      "initiative": 3,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 6,
+            "jump": true
+          }
+        ],
+        "lose": true
+      }
+    },
+    {
+      "id": "rogue.double_thrust",
+      "level": 1,
+      "name": "card.rogue.double_thrust.name",
+      "initiative": 12,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "targets": 2
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.poison_flask",
+      "level": 1,
+      "name": "card.rogue.poison_flask.name",
+      "initiative": 35,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "range": 3,
+            "targets": 3,
+            "conditions": [
+              {
+                "id": "poisoned",
+                "rounds": 2
+              }
+            ]
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.feint",
+      "level": 1,
+      "name": "card.rogue.feint.name",
+      "initiative": 10,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 2,
+            "advantage": true
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.makeshift_trap",
+      "level": 1,
+      "name": "card.rogue.makeshift_trap.name",
+      "initiative": 40,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "range": 2,
+            "conditions": [
+              {
+                "id": "immobilized",
+                "rounds": 1
+              }
+            ]
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.precise_strike",
+      "level": 2,
+      "name": "card.rogue.precise_strike.name",
+      "initiative": 14,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 4,
+            "advantage": true
+          }
+        ]
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "rogue.blade_dance",
+      "level": 3,
+      "name": "card.rogue.blade_dance.name",
+      "initiative": 9,
+      "top": {
+        "actions": [
+          {
+            "type": "attack",
+            "value": 3,
+            "targets": 3
+          }
+        ],
+        "lose": true
+      },
+      "bottom": {
+        "actions": [
+          {
+            "type": "move",
+            "value": 5,
+            "jump": true
+          }
+        ]
+      }
+    }
+  ]
+}
