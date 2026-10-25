@@ -3,8 +3,8 @@
 #include "cards/card_def.hpp"
 #include "character/attributes.hpp"
 #include "character/class_def.hpp"
+#include "util/id_table.hpp"
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -45,7 +45,7 @@ public:
     std::size_t size() const { return monsters_.size(); }
 
 private:
-    std::map<std::string, MonsterDef> monsters_;
+    util::IdTable<MonsterDef> monsters_;
 };
 
 }  // namespace rpg::monsters

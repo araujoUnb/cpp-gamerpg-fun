@@ -97,16 +97,21 @@ int play_score(const Eval& e, const cards::CardRegistry& reg, const cards::TurnP
     return play_score(e, reg.get(p.top.card), p.top.basic, reg.get(p.bottom.card), p.bottom.basic, p.top_first);
 }
 
+// A half never scores less with more movement before it, so moving first is
+// always at least as good and only that order needs scoring.
 int best_play_score(const Eval& e, const cards::CardDef& a, const cards::CardDef& b) {
     int best = std::numeric_limits<int>::min();
     for (const auto& [top, bottom] : {std::pair{&a, &b}, std::pair{&b, &a}}) {
         for (bool tb : {false, true}) {
-            for (bool bb : {false, true}) {
-                for (bool first : {false, true}) best = std::max(best, play_score(e, *top, tb, *bottom, bb, first));
-            }
+            for (bool bb : {false, true}) best = std::max(best, play_score(e, *top, tb, *bottom, bb, false));
         }
     }
     return best;
+}
+
+// Position of the card `id` in the hand, or hand.size().
+std::size_t hand_slot(const std::vector<std::string>& hand, const std::string& id) {
+    return static_cast<std::size_t>(std::find(hand.begin(), hand.end(), id) - hand.begin());
 }
 
 // Range of the first attack still to come in the hero's turn, or 0.
@@ -133,18 +138,37 @@ std::size_t AutoPlayer::choose(const Combat& c, const Decision& d) const {
     };
 
     switch (d.kind) {
-        case Decision::Kind::SelectCards:
+        case Decision::Kind::SelectCards: {
+            // Both orders of a pair have the same best play: score each pair
+            // once, with the hand's cards looked up once.
+            const auto& hand = hero.cards.hand();
+            const std::size_t n = hand.size();
+            std::vector<const cards::CardDef*> defs;
+            defs.reserve(n);
+            for (const auto& id : hand) defs.push_back(&reg.get(id));
+            std::vector<int> pair_score(n * n, std::numeric_limits<int>::min());
             for (std::size_t i = 0; i < d.selections.size(); ++i) {
                 const auto& s = d.selections[i];
                 if (s.long_rest) {
-                    consider(i, hero.cards.hand().size() < 2 ? 1000 : -1000);
+                    consider(i, n < 2 ? 1000 : -1000);
                     continue;
                 }
+                const std::size_t a = hand_slot(hand, s.lead), b = hand_slot(hand, s.other);
+                const auto& lead = a < n ? *defs[a] : reg.get(s.lead);
+                const auto& other = b < n ? *defs[b] : reg.get(s.other);
+                int score = 0;
+                if (a < n && b < n) {
+                    auto& slot = pair_score[std::min(a, b) * n + std::max(a, b)];
+                    if (slot == std::numeric_limits<int>::min()) slot = best_play_score(eval, lead, other);
+                    score = slot;
+                } else {
+                    score = best_play_score(eval, lead, other);
+                }
                 // Value of the best play, then prefer acting early.
-                const int init = reg.get(s.lead).initiative;
-                consider(i, best_play_score(eval, reg.get(s.lead), reg.get(s.other)) * 100 - init);
+                consider(i, static_cast<long>(score) * 100 - lead.initiative);
             }
             break;
+        }
 
         case Decision::Kind::PlayTurn:
             for (std::size_t i = 0; i < d.plays.size(); ++i) {

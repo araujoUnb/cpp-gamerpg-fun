@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <queue>
 #include <stdexcept>
 
 namespace rpg::combat {
@@ -51,87 +50,6 @@ std::vector<Hex> HexMap::with_terrain(Terrain t) const {
         if (terrain(h) == t) out.push_back(h);
     }
     return out;
-}
-
-std::vector<std::pair<Hex, int>> path_distances(const HexMap& map, Hex from, const HexPredicate& can_pass,
-                                                int max_cost) {
-    const int start = map.index_of(from);
-    if (start < 0) return {{from, 0}};
-    // Dijkstra over flat arrays; costs are 1 or 2, so the heap stays small.
-    std::vector<int> dist(static_cast<std::size_t>(map.cell_count()), -1);
-    using Item = std::pair<int, int>;  // cost, index
-    std::priority_queue<Item, std::vector<Item>, std::greater<>> open;
-    dist[static_cast<std::size_t>(start)] = 0;
-    open.push({0, start});
-    while (!open.empty()) {
-        const auto [d, i] = open.top();
-        open.pop();
-        if (d != dist[static_cast<std::size_t>(i)]) continue;
-        const Hex h = map.hex_at(i);
-        for (Hex n : neighbors(h)) {
-            const int k = map.index_of(n);
-            if (k < 0 || !map.walkable(n)) continue;
-            const int nd = d + map.move_cost(n);
-            auto& slot = dist[static_cast<std::size_t>(k)];
-            if (nd > max_cost || (slot >= 0 && slot <= nd) || !can_pass(n)) continue;
-            slot = nd;
-            open.push({nd, k});
-        }
-    }
-    std::vector<std::pair<Hex, int>> out;
-    for (int i = 0; i < map.cell_count(); ++i) {  // index order is Hex order
-        if (dist[static_cast<std::size_t>(i)] >= 0) out.emplace_back(map.hex_at(i), dist[static_cast<std::size_t>(i)]);
-    }
-    return out;
-}
-
-std::vector<Hex> reachable(const HexMap& map, Hex from, int budget, const HexPredicate& can_pass,
-                           const HexPredicate& can_stop) {
-    std::vector<Hex> out;
-    for (const auto& [h, d] : path_distances(map, from, can_pass, budget)) {
-        if (h == from || can_stop(h)) out.push_back(h);
-    }
-    return out;
-}
-
-std::vector<Hex> find_path(const HexMap& map, Hex from, Hex to, const HexPredicate& can_pass,
-                           const std::function<int(Hex)>& penalty) {
-    const int start = map.index_of(from);
-    const int goal = map.index_of(to);
-    if (start < 0 || goal < 0 || from == to || !map.walkable(to)) return {};
-
-    // Cost is lexicographic: movement first, penalty second.
-    constexpr long kScale = 1000;
-    std::vector<long> g(static_cast<std::size_t>(map.cell_count()), -1);
-    std::vector<int> came(static_cast<std::size_t>(map.cell_count()), -1);
-    using Item = std::pair<long, int>;  // f, index
-    std::priority_queue<Item, std::vector<Item>, std::greater<>> open;
-    g[static_cast<std::size_t>(start)] = 0;
-    open.push({static_cast<long>(distance(from, to)) * kScale, start});
-    while (!open.empty()) {
-        const auto [f, i] = open.top();
-        open.pop();
-        if (i == goal) break;
-        const Hex h = map.hex_at(i);
-        const long gi = g[static_cast<std::size_t>(i)];
-        if (f - static_cast<long>(distance(h, to)) * kScale > gi) continue;  // stale entry
-        for (Hex n : neighbors(h)) {
-            const int k = map.index_of(n);
-            if (k < 0 || !map.walkable(n) || (k != goal && !can_pass(n))) continue;
-            const long step = map.move_cost(n) * kScale + (penalty ? std::min<long>(penalty(n), kScale - 1) : 0);
-            const long ng = gi + step;
-            auto& slot = g[static_cast<std::size_t>(k)];
-            if (slot >= 0 && slot <= ng) continue;
-            slot = ng;
-            came[static_cast<std::size_t>(k)] = i;
-            open.push({ng + static_cast<long>(distance(n, to)) * kScale, k});
-        }
-    }
-    if (g[static_cast<std::size_t>(goal)] < 0) return {};
-    std::vector<Hex> path;
-    for (int i = goal; i != start; i = came[static_cast<std::size_t>(i)]) path.push_back(map.hex_at(i));
-    std::reverse(path.begin(), path.end());
-    return path;
 }
 
 std::vector<Hex> hex_line(Hex a, Hex b, double nudge) {

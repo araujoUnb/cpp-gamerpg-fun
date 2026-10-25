@@ -84,6 +84,32 @@ TEST_CASE("Difficult terrain costs two movement") {
     CHECK(r.size() == 6);
 }
 
+TEST_CASE("Distance field matches path distances and can be reused") {
+    auto map = HexMap::hexagon(4, {{1, -1}, {1, 0}});
+    map.set_terrain({0, 1}, Terrain::Difficult);
+    map.set_terrain({-1, 1}, Terrain::Difficult);
+    auto all = [](Hex) { return true; };
+
+    DistanceField field;
+    for (const Hex from : {Hex{0, 0}, Hex{-3, 2}, Hex{2, 1}}) {
+        for (const int budget : {1, 2, 3, std::numeric_limits<int>::max()}) {
+            field.compute(map, from, all, budget);
+            const auto d = path_distances(map, from, all, budget);
+            int reached = 0;
+            for (int i = 0; i < field.size(); ++i) reached += field.at_index(i) >= 0 ? 1 : 0;
+            CHECK(reached == static_cast<int>(d.size()));
+            for (const auto& [h, c] : d) {
+                CHECK(field.at(map, h) == c);
+                CHECK(c <= budget);
+            }
+        }
+    }
+    field.compute(map, {0, 0}, all);
+    CHECK(field.at(map, {0, 1}) == 2);
+    CHECK(field.at(map, {1, 0}) == -1);   // obstacle
+    CHECK(field.at(map, {9, 9}) == -1);   // outside the map
+}
+
 TEST_CASE("A* finds the cheapest path and prefers fewer penalties") {
     auto map = HexMap::hexagon(4, {{1, -1}, {1, 0}, {1, -2}});
     auto all = [](Hex) { return true; };

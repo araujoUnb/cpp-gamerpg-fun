@@ -11,12 +11,11 @@ bool MonsterDef::immune_to(const std::string& condition) const {
 
 void MonsterRegistry::add(MonsterDef def) {
     const auto id = def.id;
-    if (!monsters_.emplace(id, std::move(def)).second) throw std::invalid_argument("duplicate monster id '" + id + "'");
+    if (!monsters_.add(std::move(def))) throw std::invalid_argument("duplicate monster id '" + id + "'");
 }
 
 const MonsterDef* MonsterRegistry::find(const std::string& id) const {
-    const auto it = monsters_.find(id);
-    return it == monsters_.end() ? nullptr : &it->second;
+    return monsters_.find(id);
 }
 
 const MonsterDef& MonsterRegistry::get(const std::string& id) const {
@@ -27,7 +26,7 @@ const MonsterDef& MonsterRegistry::get(const std::string& id) const {
 
 std::vector<std::string> MonsterRegistry::ids() const {
     std::vector<std::string> out;
-    for (const auto& [id, _] : monsters_) out.push_back(id);
+    for (const auto& m : monsters_) out.push_back(m.id);
     return out;
 }
 

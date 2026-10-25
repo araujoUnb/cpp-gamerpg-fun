@@ -19,12 +19,6 @@ namespace {
 
 constexpr int kFar = std::numeric_limits<int>::max() / 4;
 
-int lookup(const std::vector<std::pair<Hex, int>>& dist, Hex h) {
-    const auto it = std::lower_bound(dist.begin(), dist.end(), h,
-                                     [](const std::pair<Hex, int>& p, Hex x) { return p.first < x; });
-    return it != dist.end() && it->first == h ? it->second : kFar;
-}
-
 }  // namespace
 
 std::size_t Decision::option_count() const {
@@ -487,15 +481,20 @@ bool Combat::step_end_of_round() {
 
 std::optional<std::size_t> Combat::monster_focus(std::size_t mi, int range) const {
     const auto& m = monsters_[mi];
-    const auto dist = path_distances(scenario_.map, m.hex, [&](Hex h) { return monster_can_enter(h); });
+    const auto& map = scenario_.map;
+    DistanceField dist;
+    dist.compute(map, m.hex, [&](Hex h) { return monster_can_enter(h); });
     std::optional<std::size_t> best;
     std::tuple<int, int, std::size_t> best_key{kFar, kFar, 0};
     for (std::size_t i = 0; i < heroes_.size(); ++i) {
         const auto& h = heroes_[i];
         if (h.status != HeroStatus::Active) continue;
         int cost = kFar;
-        for (const auto& [x, d] : dist) {
-            if ((x == m.hex || !occupied(x)) && in_reach(x, h.hex, range)) cost = std::min(cost, d);
+        for (int k = 0; k < dist.size(); ++k) {
+            const int d = dist.at_index(k);
+            if (d < 0 || d >= cost) continue;
+            const Hex x = map.hex_at(k);
+            if (distance(x, h.hex) <= range && (x == m.hex || !occupied(x)) && line_of_sight(map, x, h.hex)) cost = d;
         }
         const std::tuple<int, int, std::size_t> key{cost, distance(m.hex, h.hex), i};
         if (!best || key < best_key) {
@@ -508,32 +507,35 @@ std::optional<std::size_t> Combat::monster_focus(std::size_t mi, int range) cons
 
 Hex Combat::monster_destination(std::size_t mi, std::size_t target, int steps, int range, bool jump) const {
     const auto& m = monsters_[mi];
+    const auto& map = scenario_.map;
     const Hex goal = heroes_[target].hex;
     auto can_enter = [&](Hex h) { return monster_can_enter(h); };
-    const auto to_goal = path_distances(scenario_.map, goal, can_enter);
-
-    std::vector<std::pair<Hex, int>> options;
-    if (jump) {
-        for (Hex h : scenario_.map.hexes()) {
-            if (scenario_.map.walkable(h) && monster_can_enter(h) && distance(m.hex, h) <= steps) {
-                options.emplace_back(h, distance(m.hex, h));
-            }
-        }
-    } else {
-        options = path_distances(scenario_.map, m.hex, can_enter, steps);
-    }
+    DistanceField to_goal;
+    to_goal.compute(map, goal, can_enter);
 
     Hex best = m.hex;
     std::tuple<int, int, int> best_key{kFar, kFar, kFar};
-    for (const auto& [h, cost] : options) {
-        if (h != m.hex && occupied(h)) continue;
+    auto consider = [&](Hex h, int cost) {
+        if (h != m.hex && occupied(h)) return;
         const bool in_range = in_reach(h, goal, range);
         // In range: fewest steps. Otherwise: closest walking distance to the hero.
+        const int walk = to_goal.at(map, h);
         const std::tuple<int, int, int> key = in_range ? std::tuple{0, cost, 0}
-                                                       : std::tuple{1, lookup(to_goal, h), distance(h, goal)};
+                                                       : std::tuple{1, walk < 0 ? kFar : walk, distance(h, goal)};
         if (key < best_key || (key == best_key && h < best)) {
             best = h;
             best_key = key;
+        }
+    };
+    if (jump) {
+        for (Hex h : map.hexes()) {
+            if (map.walkable(h) && monster_can_enter(h) && distance(m.hex, h) <= steps) consider(h, distance(m.hex, h));
+        }
+    } else {
+        DistanceField from_monster;
+        from_monster.compute(map, m.hex, can_enter, steps);
+        for (int k = 0; k < from_monster.size(); ++k) {
+            if (from_monster.at_index(k) >= 0) consider(map.hex_at(k), from_monster.at_index(k));
         }
     }
     return best;

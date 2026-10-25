@@ -11,14 +11,13 @@ namespace fs = std::filesystem;
 
 void ClassRegistry::add(character::ClassDef cls) {
     const auto id = cls.id;
-    if (!classes_.emplace(id, std::move(cls)).second) {
+    if (!classes_.add(std::move(cls))) {
         throw DataError("duplicate class id '" + id + "'");
     }
 }
 
 const character::ClassDef* ClassRegistry::find(const std::string& id) const {
-    const auto it = classes_.find(id);
-    return it == classes_.end() ? nullptr : &it->second;
+    return classes_.find(id);
 }
 
 const character::ClassDef& ClassRegistry::get(const std::string& id) const {
@@ -30,7 +29,7 @@ const character::ClassDef& ClassRegistry::get(const std::string& id) const {
 std::vector<std::string> ClassRegistry::ids() const {
     std::vector<std::string> out;
     out.reserve(classes_.size());
-    for (const auto& [id, _] : classes_) out.push_back(id);
+    for (const auto& cls : classes_) out.push_back(cls.id);
     return out;
 }
 

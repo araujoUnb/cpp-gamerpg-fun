@@ -4,8 +4,10 @@
 #include <compare>
 #include <cstdint>
 #include <cstdlib>
+#include <algorithm>
 #include <functional>
 #include <limits>
+#include <queue>
 #include <set>
 #include <vector>
 
@@ -96,24 +98,132 @@ private:
     std::vector<std::uint8_t> cells_;
 };
 
-using HexPredicate = std::function<bool(Hex)>;
+// Cheapest movement cost from one hex to every cell of a map, stored densely
+// by HexMap::index_of. Reusable: compute() keeps the buffers' capacity.
+class DistanceField {
+public:
+    // Dijkstra with difficult terrain costing 2, entering only walkable hexes
+    // where can_pass is true, up to `max_cost`. Since every step costs 1 or 2,
+    // three rotating buckets replace the heap.
+    template <class Pass>
+    void compute(const HexMap& map, Hex from, Pass&& can_pass, int max_cost = std::numeric_limits<int>::max());
+
+    // Cost to reach `h`, or -1 when it cannot be reached.
+    int at(const HexMap& map, Hex h) const {
+        const int i = map.index_of(h);
+        return i < 0 || i >= size() ? -1 : cost_[static_cast<std::size_t>(i)];
+    }
+    int at_index(int i) const { return cost_[static_cast<std::size_t>(i)]; }
+    int size() const { return static_cast<int>(cost_.size()); }
+
+private:
+    std::vector<int> cost_;
+    std::array<std::vector<int>, 3> buckets_;
+};
+
+template <class Pass>
+void DistanceField::compute(const HexMap& map, Hex from, Pass&& can_pass, int max_cost) {
+    cost_.assign(static_cast<std::size_t>(map.cell_count()), -1);
+    for (auto& b : buckets_) b.clear();
+    const int start = map.index_of(from);
+    if (start < 0) return;
+    cost_[static_cast<std::size_t>(start)] = 0;
+    buckets_[0].push_back(start);
+    for (int d = 0; !buckets_[0].empty() || !buckets_[1].empty() || !buckets_[2].empty(); ++d) {
+        auto& level = buckets_[static_cast<std::size_t>(d % 3)];
+        // Entries of this level are only added while processing levels d-1 and d-2.
+        for (std::size_t j = 0; j < level.size(); ++j) {
+            const int i = level[j];
+            if (cost_[static_cast<std::size_t>(i)] != d) continue;
+            for (Hex n : neighbors(map.hex_at(i))) {
+                const int k = map.index_of(n);
+                if (k < 0 || !map.walkable(n)) continue;
+                const int step = map.move_cost(n);
+                const int nd = d + step;
+                auto& slot = cost_[static_cast<std::size_t>(k)];
+                if (nd > max_cost || (slot >= 0 && slot <= nd) || !can_pass(n)) continue;
+                slot = nd;
+                buckets_[static_cast<std::size_t>(nd % 3)].push_back(k);
+            }
+        }
+        level.clear();
+    }
+}
 
 // Cheapest movement cost from `from` to every hex it can reach within
-// `max_cost` (Dijkstra; difficult terrain costs 2), entering only walkable
-// hexes where can_pass is true. Sorted by hex; includes `from` at cost 0.
-std::vector<std::pair<Hex, int>> path_distances(const HexMap& map, Hex from, const HexPredicate& can_pass,
-                                                int max_cost = std::numeric_limits<int>::max());
+// `max_cost` (difficult terrain costs 2), entering only walkable hexes where
+// can_pass is true. Sorted by hex; includes `from` at cost 0.
+template <class Pass>
+std::vector<std::pair<Hex, int>> path_distances(const HexMap& map, Hex from, Pass&& can_pass,
+                                                int max_cost = std::numeric_limits<int>::max()) {
+    if (map.index_of(from) < 0) return {{from, 0}};
+    DistanceField field;
+    field.compute(map, from, can_pass, max_cost);
+    std::vector<std::pair<Hex, int>> out;
+    for (int i = 0; i < field.size(); ++i) {  // index order is Hex order
+        if (field.at_index(i) >= 0) out.emplace_back(map.hex_at(i), field.at_index(i));
+    }
+    return out;
+}
 
 // Every hex where a move of at most `budget` can end (can_stop), plus `from`. Sorted.
-std::vector<Hex> reachable(const HexMap& map, Hex from, int budget, const HexPredicate& can_pass,
-                           const HexPredicate& can_stop);
+template <class Pass, class Stop>
+std::vector<Hex> reachable(const HexMap& map, Hex from, int budget, Pass&& can_pass, Stop&& can_stop) {
+    std::vector<Hex> out;
+    for (const auto& [h, d] : path_distances(map, from, can_pass, budget)) {
+        if (h == from || can_stop(h)) out.push_back(h);
+    }
+    return out;
+}
 
 // A* shortest path by movement cost; among equally cheap paths, the one with
 // the smallest total `penalty` (e.g. traps on the way). Returns the hexes
 // after `from` up to and including `to`; empty when `to` cannot be reached
 // (or is `from`). `to` itself only has to be walkable.
-std::vector<Hex> find_path(const HexMap& map, Hex from, Hex to, const HexPredicate& can_pass,
-                           const std::function<int(Hex)>& penalty = nullptr);
+template <class Pass, class Penalty>
+std::vector<Hex> find_path(const HexMap& map, Hex from, Hex to, Pass&& can_pass, Penalty&& penalty) {
+    const int start = map.index_of(from);
+    const int goal = map.index_of(to);
+    if (start < 0 || goal < 0 || from == to || !map.walkable(to)) return {};
+
+    // Cost is lexicographic: movement first, penalty second.
+    constexpr long kScale = 1000;
+    std::vector<long> g(static_cast<std::size_t>(map.cell_count()), -1);
+    std::vector<int> came(static_cast<std::size_t>(map.cell_count()), -1);
+    using Item = std::pair<long, int>;  // f, index
+    std::priority_queue<Item, std::vector<Item>, std::greater<>> open;
+    g[static_cast<std::size_t>(start)] = 0;
+    open.push({static_cast<long>(distance(from, to)) * kScale, start});
+    while (!open.empty()) {
+        const auto [f, i] = open.top();
+        open.pop();
+        if (i == goal) break;
+        const Hex h = map.hex_at(i);
+        const long gi = g[static_cast<std::size_t>(i)];
+        if (f - static_cast<long>(distance(h, to)) * kScale > gi) continue;  // stale entry
+        for (Hex n : neighbors(h)) {
+            const int k = map.index_of(n);
+            if (k < 0 || !map.walkable(n) || (k != goal && !can_pass(n))) continue;
+            const long step = map.move_cost(n) * kScale + std::min<long>(penalty(n), kScale - 1);
+            const long ng = gi + step;
+            auto& slot = g[static_cast<std::size_t>(k)];
+            if (slot >= 0 && slot <= ng) continue;
+            slot = ng;
+            came[static_cast<std::size_t>(k)] = i;
+            open.push({ng + static_cast<long>(distance(n, to)) * kScale, k});
+        }
+    }
+    if (g[static_cast<std::size_t>(goal)] < 0) return {};
+    std::vector<Hex> path;
+    for (int i = goal; i != start; i = came[static_cast<std::size_t>(i)]) path.push_back(map.hex_at(i));
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+template <class Pass>
+std::vector<Hex> find_path(const HexMap& map, Hex from, Hex to, Pass&& can_pass) {
+    return find_path(map, from, to, can_pass, [](Hex) { return 0; });
+}
 
 // Hexes on the straight line from a to b, both included.
 // `nudge` picks the side when the line runs exactly along hex edges.

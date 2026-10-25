@@ -1,8 +1,8 @@
 #pragma once
 
 #include "cards/card_def.hpp"
+#include "util/id_table.hpp"
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -23,7 +23,7 @@ public:
     std::size_t size() const { return cards_.size(); }
 
 private:
-    std::map<std::string, CardDef> cards_;
+    util::IdTable<CardDef> cards_;
 };
 
 }  // namespace rpg::cards

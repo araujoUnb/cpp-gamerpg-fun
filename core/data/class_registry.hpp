@@ -2,9 +2,9 @@
 
 #include "character/class_def.hpp"
 #include "character/ruleset.hpp"
+#include "util/id_table.hpp"
 
 #include <filesystem>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -23,7 +23,7 @@ public:
     std::size_t size() const { return classes_.size(); }
 
 private:
-    std::map<std::string, character::ClassDef> classes_;
+    util::IdTable<character::ClassDef> classes_;
 };
 
 // Loads every *.json in the directory, in file-name order.
