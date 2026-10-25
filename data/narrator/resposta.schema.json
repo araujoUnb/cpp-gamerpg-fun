@@ -1,0 +1,80 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "narracao",
+    "falas",
+    "acoes"
+  ],
+  "properties": {
+    "narracao": {
+      "type": "string"
+    },
+    "falas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "personagem",
+          "texto"
+        ],
+        "properties": {
+          "personagem": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "acoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tipo",
+          "motivo"
+        ],
+        "properties": {
+          "tipo": {
+            "enum": [
+              "teste",
+              "dar_item",
+              "dar_ouro",
+              "marcar_flag",
+              "proximo_encontro",
+              "abrir_loja"
+            ]
+          },
+          "heroi": {
+            "type": "string"
+          },
+          "atributo": {
+            "type": "string"
+          },
+          "cd": {
+            "type": "integer"
+          },
+          "item": {
+            "type": "string"
+          },
+          "quantia": {
+            "type": "integer"
+          },
+          "flag": {
+            "type": "string"
+          },
+          "encontro": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

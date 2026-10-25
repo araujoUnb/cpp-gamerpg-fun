@@ -1,0 +1,120 @@
+[
+  {
+    "id": "abertura",
+    "momento": "cena",
+    "cenario": "Ruínas do Posto Avançado",
+    "contexto": "O grupo chega a um posto avançado em ruínas na fronteira. Uma muralha caída divide o pátio, com uma única porta de madeira. Corre o boato de que bandidos e mortos-vivos se abrigam ali.",
+    "grupo": [
+      {
+        "nome": "Aria",
+        "classe": "Guerreira",
+        "pv": "12/12"
+      },
+      {
+        "nome": "Bento",
+        "classe": "Mago",
+        "pv": "8/8"
+      }
+    ],
+    "eventos": [],
+    "jogador": "",
+    "acoes_permitidas": [
+      {
+        "tipo": "teste",
+        "atributos": [
+          "for",
+          "des",
+          "con",
+          "int",
+          "sab",
+          "car"
+        ],
+        "cd": [
+          5,
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "id": "rodada",
+    "momento": "combate",
+    "cenario": "Ruínas do Posto Avançado",
+    "contexto": "Rodada 3 do combate.",
+    "grupo": [
+      {
+        "nome": "Aria",
+        "classe": "Guerreira",
+        "pv": "7/12"
+      },
+      {
+        "nome": "Bento",
+        "classe": "Mago",
+        "pv": "8/8"
+      }
+    ],
+    "eventos": [
+      "Brutamontes revela 'Pisotear' e avança até Aria",
+      "Brutamontes ataca Aria: rolou 17 contra CA 16, acerta; Aria sofre 5 de dano (7/12)",
+      "Aria usa 'Golpe Atordoante': rolou 14 contra CA 11, acerta; Brutamontes sofre 6 de dano (7/13) e fica Atordoado",
+      "Bento usa 'Raio Arcano' no Esqueleto Arqueiro: rolou 20, crítico; Esqueleto Arqueiro sofre 8 de dano e é destruído"
+    ],
+    "jogador": "",
+    "acoes_permitidas": []
+  },
+  {
+    "id": "conversa",
+    "momento": "cena",
+    "cenario": "Aldeia de Vau-Claro",
+    "contexto": "Depois das ruínas, o grupo volta à aldeia. Marta, a ferreira, desconfiada de forasteiros, perdeu o filho para os bandidos. Ela tem uma lança boa na bigorna.",
+    "grupo": [
+      {
+        "nome": "Aria",
+        "classe": "Guerreira",
+        "pv": "12/12"
+      },
+      {
+        "nome": "Bento",
+        "classe": "Mago",
+        "pv": "8/8"
+      }
+    ],
+    "eventos": [
+      "O grupo venceu os bandidos das ruínas e trouxe de volta o medalhão do filho de Marta"
+    ],
+    "jogador": "Bento mostra o medalhão a Marta e pergunta se ela pode ajudar o grupo com armas melhores.",
+    "acoes_permitidas": [
+      {
+        "tipo": "teste",
+        "atributos": [
+          "car"
+        ],
+        "cd": [
+          10,
+          15
+        ]
+      },
+      {
+        "tipo": "dar_item",
+        "itens": [
+          "lanca_de_marta",
+          "pocao_de_cura"
+        ]
+      },
+      {
+        "tipo": "dar_ouro",
+        "maximo": 20
+      },
+      {
+        "tipo": "marcar_flag",
+        "flags": [
+          "marta_aliada",
+          "marta_hostil"
+        ]
+      },
+      {
+        "tipo": "abrir_loja"
+      }
+    ]
+  }
+]

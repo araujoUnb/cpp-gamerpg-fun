@@ -44,6 +44,7 @@ core/
   campaign/    progresso entre cenários, recompensas, flags de história
   data/        carregamento e validação dos JSON
 bindings/      GDExtension: expõe o núcleo ao Godot, sem regras
+narrator/      mestre narrador: fala com o modelo de linguagem e valida o que ele pede
 cli/           executável de terminal (etapa 4): joga e mede um cenário
 tools/         ferramentas fora do jogo: treino do mestre do jogo
 godot/         projeto Godot: cenas, GDScript, temas, shaders, arte
@@ -190,6 +191,20 @@ O equipamento se **ganha dentro da história** e se **equipa fora do combate**.
 - Flags de campanha guardam escolhas e liberam ou bloqueiam cenários e regiões
 - Cada campanha fica em sua pasta dentro de `stories/` e `data/`. Por enquanto existe só uma.
 
+### Mestre narrador
+
+Além do mestre tático (que joga os monstros), o jogo tem um **mestre narrador** com inteligência: um modelo de linguagem que conta a história, dá voz aos personagens, improvisa cenas e conduz a campanha como um mestre de mesa. Ele decide **o que acontece na história**; as **regras** continuam todas no núcleo em C++.
+
+- **Onde roda:** um modelo aberto local (família Qwen3, quantizado), servido pelo llama.cpp no lab10 e acessado pela rede local. Nada é enviado para fora. O modelo é escolhido por medição de velocidade e de qualidade do português.
+- **Módulo próprio:** `narrator/` depende do núcleo; o núcleo não depende dele. O jogo funciona sem o narrador, com o texto das histórias em ink e textos padrão dos eventos.
+- **Protocolo:** a cada momento de narração o jogo monta uma **situação** em JSON: cena (região, cenário, trecho do ink), grupo (nomes, classes, PV, condições, itens), eventos recentes, flags, o que o jogador fez ou disse, e a **lista de ações permitidas** com seus limites. O modelo responde num JSON com formato fixo (imposto por gramática na geração): `narracao`, `falas` (personagem e texto) e `acoes`.
+- **Ações do narrador:** pedir teste de atributo, perícia ou resistência (com CD dentro da faixa do ruleset), dar item da tabela da região, dar ouro até o limite da cena, marcar flag declarada pela campanha, escolher o próximo encontro entre os permitidos, abrir a loja. Cada ação passa pelo núcleo, que valida e resolve com os dados (`Rng`). Ação inválida é descartada e registrada, e o narrador é avisado.
+- **Limites:** o narrador não mexe em PV, cartas ou monstros durante o combate, não cria itens fora das tabelas, não mata heróis e segue a regra do **mestre honesto** (não vê cartas escolhidas em segredo, baralhos nem dados futuros).
+- **Ink como roteiro:** o ink define os trechos e as escolhas da história; o narrador os reescreve, improvisa entre eles e reage ao jogador, sem pular o que o ink exige.
+- **Replay e save:** tudo o que o narrador escreve e pede é gravado no save da campanha. Carregar ou repetir usa o que foi gravado, sem chamar o modelo, e o jogo continua determinístico.
+- **Tempo de resposta:** a narração do combate é pedida em segundo plano entre os turnos e nunca trava o jogo. Se o servidor não responder a tempo, vale o texto padrão.
+- **Textos do narrador:** as instruções e o estilo (tom, tamanho, personalidade) ficam em `data/narrator/`, em português, nunca no código.
+
 ## Ordem de desenvolvimento
 
 1. **Dados e testes.** `dice/` com semente, vantagem, crítico, e testes cobrindo tudo
@@ -200,6 +215,8 @@ O equipamento se **ganha dentro da história** e se **equipa fora do combate**.
 6. **Frontend Godot.** Ponte GDExtension, tabuleiro hexagonal, peças, mão de cartas com animação, rolagens de dado animadas, efeitos de partícula e interface com tema próprio
 7. **Campanha.** Encadear cenários, progressão de nível entre eles, equipamento, acampamento e loja, mapa do mundo com a primeira região aberta
 8. **Histórias em ink.** Integração do inkcpp e testes de atributo vindos da história
+
+O mestre narrador entra em paralelo, em partes: (N1) servidor do modelo no lab10 e escolha do modelo por medição; (N2) módulo `narrator/` e narração do combate no terminal (`--narrador`), só com texto; (N3) ações validadas pelo núcleo (testes, itens, ouro, flags, encontros), junto com a campanha da etapa 7; (N4) ink como roteiro, junto com a etapa 8.
 
 Não pular para o frontend antes da etapa 4 funcionar no terminal.
 
