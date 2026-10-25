@@ -36,11 +36,12 @@ std::size_t Decision::option_count() const {
 // --- Setup ------------------------------------------------------------------
 
 Combat::Combat(const data::Content& content, scenario::ScenarioDef scenario,
-               std::vector<character::CharacterSheet> party, std::uint64_t seed, std::string_view game_master)
+               std::vector<character::CharacterSheet> party, std::uint64_t seed, std::string_view difficulty)
     : content_(&content), scenario_(std::move(scenario)), rng_(seed) {
-    auto gm = find_game_master(content, game_master);
-    if (!gm) throw std::invalid_argument("unknown game master '" + std::string(game_master) + "'");
-    gm_ = std::move(*gm);
+    auto level = find_difficulty(content, difficulty);
+    if (!level) throw std::invalid_argument("unknown difficulty '" + std::string(difficulty) + "'");
+    difficulty_ = std::move(level->first);
+    gm_ = std::move(level->second);
     if (party.empty()) throw std::invalid_argument("the party is empty");
     if (party.size() > scenario_.hero_starts.size()) throw std::invalid_argument("more heroes than start hexes");
 
@@ -68,7 +69,7 @@ Combat::Combat(const data::Content& content, scenario::ScenarioDef scenario,
         m.type = spawn.type;
         m.id = spawn.type + "#" + std::to_string(++count[spawn.type]);
         m.hex = spawn.hex;
-        m.hp = def.hit_points;
+        m.hp = difficulty_.monster_hp(def.hit_points);
         monsters_.push_back(std::move(m));
     }
     for (const auto& [type, _] : count) {
@@ -555,6 +556,9 @@ void Combat::run_monster_turn(std::size_t mi) {
         return;
     }
 
+    // A softer difficulty lets the master slip: this turn follows the classic rule.
+    const bool tactical = gm_.tactical && !(difficulty_.blunder > 0 &&
+                                            rng_.below(1000) < static_cast<std::uint32_t>(difficulty_.blunder));
     const auto& def = def_of(m);
     int current = -1;
     for (const auto& deck : decks_) {
@@ -572,7 +576,7 @@ void Combat::run_monster_turn(std::size_t mi) {
                     if (card.actions[n].type == ActionType::Attack) attack = &card.actions[n];
                 }
                 Hex to = m.hex;
-                if (gm_.tactical) {
+                if (tactical) {
                     to = gm_destination(mi, a, attack);
                 } else {
                     const int range = attack ? attack->range : 1;
@@ -589,7 +593,7 @@ void Combat::run_monster_turn(std::size_t mi) {
             }
             case ActionType::Attack: {
                 std::vector<std::size_t> order;
-                if (gm_.tactical) {
+                if (tactical) {
                     order = gm_target_order(mi, a);
                 } else {
                     std::vector<std::pair<int, std::size_t>> in_range;
@@ -614,11 +618,11 @@ void Combat::run_monster_turn(std::size_t mi) {
             case ActionType::Condition:
                 if (a.target == TargetKind::Enemy) {
                     std::optional<std::size_t> pick;
-                    if (gm_.tactical) {
+                    if (tactical) {
                         const auto order = gm_target_order(mi, a);
                         if (!order.empty()) pick = order.front();
                     }
-                    for (std::size_t i = 0; i < heroes_.size() && !gm_.tactical; ++i) {
+                    for (std::size_t i = 0; i < heroes_.size() && !tactical; ++i) {
                         const auto& h = heroes_[i];
                         if (h.status != HeroStatus::Active || !in_reach(m.hex, h.hex, a.range)) continue;
                         if (!pick || distance(m.hex, h.hex) < distance(m.hex, heroes_[*pick].hex)) pick = i;
@@ -641,6 +645,10 @@ const character::ClassDef& Combat::class_of(const HeroState& h) const {
 
 const monsters::MonsterDef& Combat::def_of(const MonsterState& m) const {
     return content_->monsters.get(m.type);
+}
+
+int Combat::max_hp_of(const MonsterState& m) const {
+    return difficulty_.monster_hp(def_of(m).hit_points);
 }
 
 bool Combat::has_effect(const std::vector<ActiveCondition>& conds, bool ConditionEffects::*flag) const {
@@ -792,7 +800,7 @@ void Combat::heal_hero(const std::string& healer, std::size_t hi, int amount) {
 void Combat::heal_monster(std::size_t mi, int amount) {
     auto& m = monsters_[mi];
     const int before = m.hp;
-    m.hp = std::min(def_of(m).hit_points, m.hp + amount);
+    m.hp = std::min(max_hp_of(m), m.hp + amount);
     emit({.kind = Event::Kind::Healed, .actor = m.id, .target = m.id, .value = m.hp - before, .value2 = m.hp});
 }
 

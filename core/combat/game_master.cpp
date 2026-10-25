@@ -20,14 +20,23 @@ constexpr int kFarWalk = 30;  // walking distance used when no hero can be reach
 
 }  // namespace
 
-std::optional<monsters::GameMasterDef> Combat::find_game_master(const data::Content& content, std::string_view id) {
-    if (const auto* gm = content.game_masters.find(id)) return *gm;
-    if (id == monsters::GameMasterDef::kClassic) return monsters::GameMasterDef{};
+std::optional<std::pair<monsters::DifficultyDef, monsters::GameMasterDef>> Combat::find_difficulty(
+    const data::Content& content, std::string_view id) {
+    monsters::DifficultyDef d;
+    if (const auto* found = content.difficulties.find(id)) {
+        d = *found;
+    } else if (id != monsters::DifficultyDef::kStandard) {
+        return std::nullopt;
+    }
+    if (const auto* gm = content.game_masters.find(d.game_master)) return std::pair{d, *gm};
+    if (d.game_master == monsters::GameMasterDef::kClassic) return std::pair{d, monsters::GameMasterDef{}};
     return std::nullopt;
 }
 
+// Judged from the hero's class and level, which are on the table, never from
+// the deck the player picked in secret.
 bool Combat::hero_heals(const HeroState& h) const {
-    for (const auto& id : h.sheet.deck) {
+    for (const auto& id : content_->cards.available(h.sheet.class_id, h.sheet.level)) {
         const auto& card = content_->cards.get(id);
         for (const auto* half : {&card.top, &card.bottom}) {
             for (const auto& a : half->actions) {

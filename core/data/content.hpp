@@ -24,6 +24,7 @@ struct Content {
     cards::CardRegistry cards;
     monsters::MonsterRegistry monsters;
     util::IdTable<monsters::GameMasterDef> game_masters;
+    util::IdTable<monsters::DifficultyDef> difficulties;
     TextTable text;
 };
 
@@ -38,6 +39,9 @@ monsters::MonsterDef monster_from_json(const json& j, const character::Ruleset& 
 inline constexpr int kMaxGmWeight = 10000;
 monsters::GameMasterDef game_master_from_json(const json& j, const std::string& where = "game master");
 json to_json(const monsters::GameMasterDef& gm);
+// Checks the ranges and that its game master exists in `content` (or is "classic").
+monsters::DifficultyDef difficulty_from_json(const json& j, const Content& content, const std::string& where = "difficulty");
+json to_json(const monsters::DifficultyDef& d);
 
 // Checks map bounds, overlapping starts and unknown monster types.
 scenario::ScenarioDef scenario_from_json(const json& j, const Content& content,

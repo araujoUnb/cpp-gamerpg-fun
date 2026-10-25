@@ -126,6 +126,47 @@ json to_json(const monsters::GameMasterDef& gm) {
     return j;
 }
 
+monsters::DifficultyDef difficulty_from_json(const json& j, const Content& content, const std::string& where) {
+    only_keys(j, {"id", "name", "game_master", "blunder", "monster_hp_percent", "calibration"}, where);
+    monsters::DifficultyDef d;
+    d.id = get_string(j, "id", where);
+    if (d.id.empty()) fail(where, "'id' must not be empty");
+    const std::string ctx = where + " [" + d.id + "]";
+    d.name_key = get_string(j, "name", ctx);
+    d.game_master = get_string(j, "game_master", ctx);
+    if (d.game_master != monsters::GameMasterDef::kClassic && !content.game_masters.find(d.game_master)) {
+        fail(ctx, "unknown game master '" + d.game_master + "'");
+    }
+    d.blunder = get_int_or(j, "blunder", 0, ctx);
+    if (d.blunder < 0 || d.blunder > 1000) fail(ctx, "'blunder' must be between 0 and 1000 (per mille)");
+    d.monster_hp_percent = get_int_or(j, "monster_hp_percent", 100, ctx);
+    if (d.monster_hp_percent < 10 || d.monster_hp_percent > 500) fail(ctx, "'monster_hp_percent' must be between 10 and 500");
+    if (j.contains("calibration")) {
+        const auto& c = j["calibration"];
+        const std::string cctx = ctx + ".calibration";
+        only_keys(c, {"target_win_percent", "floor_win_percent"}, cctx);
+        d.target_win_percent = get_int(c, "target_win_percent", cctx);
+        d.floor_win_percent = get_int(c, "floor_win_percent", cctx);
+        if (d.target_win_percent < 1 || d.target_win_percent > 100 || d.floor_win_percent < 0 ||
+            d.floor_win_percent > d.target_win_percent) {
+            fail(cctx, "need 0 <= floor_win_percent <= target_win_percent <= 100");
+        }
+    }
+    return d;
+}
+
+json to_json(const monsters::DifficultyDef& d) {
+    json j{{"id", d.id},
+           {"name", d.name_key},
+           {"game_master", d.game_master},
+           {"blunder", d.blunder},
+           {"monster_hp_percent", d.monster_hp_percent}};
+    if (d.target_win_percent > 0) {
+        j["calibration"] = {{"target_win_percent", d.target_win_percent}, {"floor_win_percent", d.floor_win_percent}};
+    }
+    return j;
+}
+
 Content load_content(const fs::path& data_dir, const std::string& language) {
     Content c;
     c.rules = ruleset_from_json(read_json_file(data_dir / "rules" / "ruleset.json"), "ruleset.json");
@@ -143,6 +184,11 @@ Content load_content(const fs::path& data_dir, const std::string& language) {
         auto gm = game_master_from_json(read_json_file(file), file.filename().string());
         const auto id = gm.id;
         if (!c.game_masters.add(std::move(gm))) fail(file.filename().string(), "duplicate game master id '" + id + "'");
+    }
+    for (const auto& file : json_files(data_dir / "difficulties")) {
+        auto d = difficulty_from_json(read_json_file(file), c, file.filename().string());
+        const auto id = d.id;
+        if (!c.difficulties.add(std::move(d))) fail(file.filename().string(), "duplicate difficulty id '" + id + "'");
     }
     c.text = load_text_table(data_dir / "lang" / (language + ".json"));
     return c;

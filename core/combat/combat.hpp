@@ -94,10 +94,11 @@ class Combat {
 public:
     // Heroes must be valid for their class, with a valid deck, one per hero start.
     // Throws std::invalid_argument otherwise.
-    // `game_master` is the id of a profile in content.game_masters; "classic"
-    // always exists. Throws std::invalid_argument for an unknown one.
+    // `difficulty` is the id of a level in content.difficulties; "standard"
+    // (classic master, monsters unchanged) always exists. Throws
+    // std::invalid_argument for an unknown one.
     Combat(const data::Content& content, scenario::ScenarioDef scenario, std::vector<character::CharacterSheet> party,
-           std::uint64_t seed, std::string_view game_master = monsters::GameMasterDef::kClassic);
+           std::uint64_t seed, std::string_view difficulty = monsters::DifficultyDef::kStandard);
 
     Outcome outcome() const { return outcome_; }
     bool finished() const { return outcome_ != Outcome::Ongoing; }
@@ -113,7 +114,10 @@ public:
     const std::vector<HeroState>& heroes() const { return heroes_; }
     const std::vector<MonsterState>& monsters() const { return monsters_; }
     const data::Content& content() const { return *content_; }
+    const monsters::DifficultyDef& difficulty() const { return difficulty_; }
     const monsters::GameMasterDef& game_master() const { return gm_; }
+    // Hit points of a full-health monster at this difficulty.
+    int max_hp_of(const MonsterState& m) const;
 
     // Initiative of a creature this round, or nullopt if it has none.
     std::optional<int> initiative_of(const std::string& id) const;
@@ -167,8 +171,10 @@ private:
     dice::RollMode monster_roll_mode(const MonsterState& m, const cards::ActionDef& a) const;
 
     // Tactical game master (game_master.cpp).
-    // The profile with that id; "classic" works even when the content lacks it.
-    static std::optional<monsters::GameMasterDef> find_game_master(const data::Content& content, std::string_view id);
+    // The level with that id and its game master; "standard" and "classic"
+    // work even when the content lacks them.
+    static std::optional<std::pair<monsters::DifficultyDef, monsters::GameMasterDef>> find_difficulty(
+        const data::Content& content, std::string_view id);
     bool hero_heals(const HeroState& h) const;
     // Score of attacking each hero with `a`, minimum long for heroes that cannot be targeted.
     std::vector<long> gm_target_scores(std::size_t monster, const cards::ActionDef& a) const;
@@ -217,6 +223,7 @@ private:
     std::optional<std::size_t> monster_index(const std::string& id) const;
 
     const data::Content* content_;
+    monsters::DifficultyDef difficulty_;
     monsters::GameMasterDef gm_;
     scenario::ScenarioDef scenario_;
     dice::Rng rng_;

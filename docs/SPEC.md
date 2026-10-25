@@ -1,8 +1,8 @@
 # RPG de Tabuleiro Tático (projeto em C++)
 
-> **Escopo atual:** começar com **uma única história** (uma campanha curta de 3 cenários).
-> A estrutura de pastas por campanha continua valendo, para que outras histórias
-> possam ser adicionadas depois sem mudar o código.
+> **Escopo atual:** começar com **uma única história** (uma campanha curta de 3 cenários),
+> que é a primeira região do mapa do mundo. A estrutura de pastas por região continua
+> valendo, para que outras regiões e histórias possam ser adicionadas depois sem mudar o código.
 
 ## Visão geral
 
@@ -132,6 +132,16 @@ Detalhes definidos na etapa 3:
 - Os pesos do mestre tático são treinados fora do jogo (`tools/gm_train.cpp`, método da entropia cruzada) contra o `AutoPlayer`, em todos os cenários e pares de classes, e gravados em JSON.
 - Estatísticas em JSON: CA, PV, atributos, dano, imunidades
 
+### Dificuldade
+
+O jogador escolhe a dificuldade ao começar a campanha. Em toda dificuldade os heróis precisam ter uma chance real de vencer: o mestre joga para desafiar, não para tornar a vitória impossível.
+
+- Os níveis ficam em `data/difficulties/`: **fácil**, **normal** e **difícil**. Cada um define o perfil do mestre do jogo e os números que o calibram: a chance, por turno de monstro, de o monstro agir pela regra clássica (um "deslize" do mestre), e uma porcentagem dos PV dos monstros.
+- Os níveis são calibrados com o treino fora do jogo, contra o `AutoPlayer`, em todos os cenários e pares de classes. Alvos de vitória dos heróis, na média: fácil por volta de 75%, normal por volta de 60%, difícil por volta de 45%.
+- **Piso de vitória:** em cada nível, nenhum confronto testado (cenário × par de classes) pode ficar abaixo de um piso de vitórias do `AutoPlayer`: 50% no fácil, 30% no normal e 15% no difícil. Um confronto abaixo do piso é corrigido nos dados (cenário, monstros ou calibração do nível), nunca com regra escondida no código. A ferramenta de treino relata os confrontos abaixo do piso.
+- **Mestre honesto:** o mestre nunca usa informação que os heróis não têm na mesa: as cartas escolhidas em segredo, a ordem dos baralhos e os dados futuros. Ele vê o tabuleiro, os PV, as condições e as cartas já reveladas.
+- A dificuldade fica no save, e trocar de dificuldade só vale a partir do próximo cenário.
+
 ### Condições
 
 Começar com poucas: envenenado, atordoado, imobilizado, fortalecido, protegido. Cada uma com duração em rodadas e efeito declarado em JSON. Os efeitos descritos hoje em `pt-BR.json` (envenenado: +1 de dano recebido; atordoado: perde o turno; imobilizado: não se move; fortalecido: ataca com vantagem; protegido: −1 de dano por ataque) são provisórios até a etapa 4.
@@ -152,11 +162,32 @@ Detalhes definidos na etapa 5:
 - Ataque, cura e condição com alcance maior que 1 exigem linha de visão, traçada entre os centros das casas. Linhas que passam rente às arestas são livres se um dos lados estiver livre, e a visão é sempre simétrica.
 - O evento de movimento traz o caminho casa a casa, para o frontend animar.
 
+### Equipamento
+
+O equipamento se **ganha dentro da história** e se **equipa fora do combate**.
+
+- **Onde se ganha:** baús e recompensas nos cenários, escolhas e recompensas na história em ink ("aceitar a lança do ferreiro?") e a loja da região, com o ouro da campanha.
+- **Onde se equipa:** no acampamento, entre um cenário e outro. Durante o combate o equipamento não muda.
+- Os itens ficam em `data/items/` (e nos itens próprios de cada região), com nome e descrição em `lang/`. Nenhum valor de item fica no código.
+- **Espaços por herói:** uma arma, uma armadura, um escudo e até dois consumíveis. O inventário da campanha é do grupo; o que está equipado fica na ficha.
+- **Arma:** muda o ataque básico (valor, alcance, condição) e pode trazer até 2 cartas de arma. As cartas de arma entram no baralho no lugar de cartas da classe, e o baralho continua com o tamanho da mão da classe.
+- **Armadura e escudo:** a armadura troca a base da CA e o limite de DES da classe; o escudo soma à CA. É a fórmula da ficha que já existe, com os números vindos do item.
+- **Consumível:** usado no combate como a metade de uma carta (por exemplo, poção: cura 3 na metade de baixo) e gasto depois do uso.
+- **Proficiência:** a classe diz que tipos de arma e armadura usa sem penalidade (listas do SRD). Fora da proficiência, o ataque com a arma tem desvantagem, e a armadura impede descanso longo.
+
+### Mapa do mundo e regiões
+
+- O jogo tem um mapa do mundo dividido em **regiões**. Cada região é uma campanha com história, cenários, monstros, itens e loja próprios: a floresta com arcos e lanças, a montanha com machados e armaduras pesadas, e assim por diante.
+- Cada região fica em sua pasta dentro de `stories/` e `data/regions/`. O mapa do mundo (`data/world.json`) diz onde cada região fica, como se chega a ela e que flag a libera.
+- O grupo leva entre as regiões o nível, o equipamento, o inventário e o ouro. As flags guardam as escolhas feitas em cada história.
+- Por enquanto existe só uma região: a campanha de 3 cenários. O mapa do mundo já mostra as outras como fechadas.
+
 ### Campanha e histórias
 
-- Uma campanha é uma sequência de cenários ligados por trechos de história em ink
+- Uma campanha é a história de uma região: uma sequência de cenários ligados por trechos de história em ink
 - O ink pode pedir testes de atributo, que o núcleo resolve e devolve o resultado para a história
-- Flags de campanha guardam escolhas e liberam ou bloqueiam cenários
+- O ink pode dar itens, ouro e flags, e abrir a loja
+- Flags de campanha guardam escolhas e liberam ou bloqueiam cenários e regiões
 - Cada campanha fica em sua pasta dentro de `stories/` e `data/`. Por enquanto existe só uma.
 
 ## Ordem de desenvolvimento
@@ -167,7 +198,7 @@ Detalhes definidos na etapa 5:
 4. **Combate em modo texto.** Um cenário pequeno rodando no terminal com dois heróis e três monstros, para validar as regras antes de qualquer gráfico
 5. **Tabuleiro hexagonal.** Movimento, alcance, linha de visão, A*
 6. **Frontend Godot.** Ponte GDExtension, tabuleiro hexagonal, peças, mão de cartas com animação, rolagens de dado animadas, efeitos de partícula e interface com tema próprio
-7. **Campanha.** Encadear cenários, progressão de nível entre eles
+7. **Campanha.** Encadear cenários, progressão de nível entre eles, equipamento, acampamento e loja, mapa do mundo com a primeira região aberta
 8. **Histórias em ink.** Integração do inkcpp e testes de atributo vindos da história
 
 Não pular para o frontend antes da etapa 4 funcionar no terminal.
@@ -176,7 +207,8 @@ Não pular para o frontend antes da etapa 4 funcionar no terminal.
 
 - As 12 classes do SRD: Bárbaro, Bardo, Clérigo, Druida, Guerreiro, Monge, Paladino, Patrulheiro, Ladino, Feiticeiro, Bruxo e Mago. Cada uma com 12 a 15 cartas originais até o nível 3.
 - 4 tipos de monstro
-- 1 história: campanha curta de 3 cenários para testar o fluxo inteiro
+- 1 história: campanha curta de 3 cenários para testar o fluxo inteiro, que é a primeira região do mapa do mundo
+- Itens da primeira região: algumas armas, armaduras, escudos e consumíveis, o bastante para testar o equipamento
 
 ## Convenções
 

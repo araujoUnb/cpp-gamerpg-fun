@@ -116,6 +116,15 @@ data::Content test_content() {
     gm.weights.approach = -20;
     gm.weights.steps = -1;
     c.game_masters.add(gm);
+    monsters::DifficultyDef sharp;
+    sharp.id = "sharp";
+    sharp.game_master = "sharp";
+    c.difficulties.add(sharp);
+    auto sloppy = sharp;
+    sloppy.id = "sloppy";
+    sloppy.blunder = 1000;  // always slips: plays like the classic master
+    sloppy.monster_hp_percent = 50;
+    c.difficulties.add(sloppy);
     return c;
 }
 
@@ -380,7 +389,7 @@ void check_invariants(const Combat& c) {
     }
     for (const auto& m : c.monsters()) {
         REQUIRE(m.hp >= 0);
-        REQUIRE(m.hp <= c.content().monsters.get(m.type).hit_points);
+        REQUIRE(m.hp <= c.max_hp_of(m));
         REQUIRE(m.alive == (m.hp > 0));
         if (m.alive) {
             REQUIRE(c.scenario().map.walkable(m.hex));
@@ -430,7 +439,7 @@ TEST_CASE("Random play on every scenario always ends and keeps every invariant")
         std::vector<character::CharacterSheet> party;
         for (const auto& [id, cls] : parties[seed % 2]) party.push_back(real_hero(content, id, cls));
 
-        Combat c(content, scenarios[(seed / 2) % 2], party, seed, (seed / 4) % 2 ? "tactical" : "classic");
+        Combat c(content, scenarios[(seed / 2) % 2], party, seed, (seed / 4) % 2 ? "normal" : "standard");
         dice::Rng chooser(seed * 7919 + 1);
         int decisions = 0;
         while (!c.finished()) {
@@ -501,7 +510,7 @@ TEST_CASE("Saving and loading at any point continues the exact same battle") {
     for (std::uint64_t seed = 0; seed < 40; ++seed) {
         CAPTURE(seed);
         Combat c(content, scenarios[seed % 2], {real_hero(content, "h1", "rogue"), real_hero(content, "h2", "cleric")}, seed,
-                 seed % 3 == 0 ? "classic" : "tactical");
+                 seed % 3 == 0 ? "standard" : seed % 3 == 1 ? "easy" : "hard");
         dice::Rng chooser(seed + 100);
         // Mix of heuristic and random choices to visit many states.
         auto choose = [&](const Combat& x, dice::Rng& r) {
@@ -568,26 +577,79 @@ TEST_CASE("Broken saves are rejected") {
     CHECK_THROWS_AS(Combat::from_json(content, bad), data::DataError);
 
     bad = good;
-    bad["game_master"] = "nobody";
+    bad["difficulty"] = "nobody";
     CHECK_THROWS_AS(Combat::from_json(content, bad), data::DataError);
 }
 
 // --- Game master -----------------------------------------------------------------
 
-TEST_CASE("The game master is chosen at setup and kept by saves") {
+TEST_CASE("The difficulty is chosen at setup and kept by saves") {
     const auto content = test_content();
     const auto s = arena({{"dummy", {3, 0}}});
-    CHECK(Combat(content, s, {hero(content, "a")}, 1).game_master().id == "classic");
+    const Combat standard(content, s, {hero(content, "a")}, 1);
+    CHECK(standard.difficulty().id == "standard");
+    CHECK(standard.game_master().id == "classic");
+    CHECK(standard.monsters()[0].hp == 40);
     const Combat c(content, s, {hero(content, "a")}, 1, "sharp");
     CHECK(c.game_master().tactical);
-    CHECK(c.to_json()["game_master"] == "sharp");
+    CHECK(c.to_json()["difficulty"] == "sharp");
     CHECK(Combat::from_json(content, c.to_json()).game_master().id == "sharp");
     CHECK_THROWS_AS(Combat(content, s, {hero(content, "a")}, 1, "nobody"), std::invalid_argument);
 }
 
+TEST_CASE("A difficulty scales monster hit points") {
+    const auto content = test_content();
+    const Combat c(content, arena({{"dummy", {3, 0}}, {"biter", {-3, 0}}}), {hero(content, "a")}, 1, "sloppy");
+    CHECK(c.monsters()[0].hp == 20);  // 40 at 50%
+    CHECK(c.monsters()[1].hp == 3);   // 5 at 50%, rounded
+    CHECK(c.max_hp_of(c.monsters()[0]) == 20);
+    auto saved = c.to_json();
+    CHECK_NOTHROW(Combat::from_json(content, saved));
+    saved["monsters"][0]["hp"] = 21;
+    CHECK_THROWS_AS(Combat::from_json(content, saved), data::DataError);
+
+    monsters::DifficultyDef d;
+    d.monster_hp_percent = 10;
+    CHECK(d.monster_hp(4) == 1);  // never below 1
+}
+
+TEST_CASE("A master that always slips plays by the classic rule") {
+    const auto content = test_content();
+    Combat c(content, arena({{"archer", {1, 0}}}), {hero(content, "a")}, 1, "sloppy");
+    select(c, "tester.hit", "tester.stun");
+    CHECK(distance(c.monsters()[0].hex, c.heroes()[0].hex) == 1);  // the sharp master steps away
+}
+
+TEST_CASE("The master judges healers by class, not by the secret deck") {
+    // The tester class has a healing card; a hero who left it out still counts
+    // as a healer. A master that shuns healers would otherwise pick hero b.
+    auto content = test_content();
+    monsters::GameMasterDef shy;
+    shy.id = "shy";
+    shy.tactical = true;
+    shy.weights.expected_damage = 10;
+    shy.weights.healer = -1000;
+    content.game_masters.add(shy);
+    monsters::DifficultyDef level;
+    level.id = "shy";
+    level.game_master = "shy";
+    content.difficulties.add(level);
+    for (const bool with_heal : {true, false}) {
+        CAPTURE(with_heal);
+        auto weak = hero_with(content, "b", with_heal ? std::vector<std::string>{"tester.hit", "tester.stun", "tester.heal", "tester.big"}
+                                                      : std::vector<std::string>{"tester.hit", "tester.stun", "tester.shot", "tester.big"});
+        Combat c(content, arena({{"biter", {0, 0}}}, {{1, 0}, {-1, 0}}), {hero(content, "a"), weak}, 3, "shy");
+        select(c, "tester.hit", "tester.stun");
+        select(c, "tester.hit", "tester.stun");
+        const auto hits = of_kind(c, Event::Kind::AttackRolled);
+        REQUIRE(hits.size() == 1);
+        CHECK(hits[0].target == "a");  // same choice either way
+    }
+}
+
 TEST_CASE("The tactical game master goes for the hero it can drop") {
     const auto content = test_content();
-    for (const std::string gm : {"classic", "sharp"}) {
+    for (const std::string gm : {"standard", "sharp"}) {
         CAPTURE(gm);
         auto weak = hero(content, "b");
         weak.current_hp = 4;
@@ -603,7 +665,7 @@ TEST_CASE("The tactical game master goes for the hero it can drop") {
 
 TEST_CASE("A tactical ranged monster steps away before shooting") {
     const auto content = test_content();
-    for (const std::string gm : {"classic", "sharp"}) {
+    for (const std::string gm : {"standard", "sharp"}) {
         CAPTURE(gm);
         Combat c(content, arena({{"archer", {1, 0}}}), {hero(content, "a")}, 1, gm);
         select(c, "tester.hit", "tester.stun");
@@ -620,12 +682,12 @@ TEST_CASE("A tactical ranged monster steps away before shooting") {
 
 TEST_CASE("The tactical game master plays every scenario within the rules") {
     const auto content = data::load_content(kData);
-    REQUIRE(content.game_masters.find("tactical"));
+    for (const auto* id : {"easy", "normal", "hard"}) REQUIRE(content.difficulties.find(id));
     const auto s = data::load_scenario(kData / "scenarios" / "ruins.json", content);
     const AutoPlayer player;
     for (std::uint64_t seed = 0; seed < 30; ++seed) {
         CAPTURE(seed);
-        Combat c(content, s, {real_hero(content, "h1", "fighter"), real_hero(content, "h2", "wizard")}, seed, "tactical");
+        Combat c(content, s, {real_hero(content, "h1", "fighter"), real_hero(content, "h2", "wizard")}, seed, "hard");
         while (!c.finished()) {
             c.decide(player.choose(c, *c.pending()));
             check_invariants(c);

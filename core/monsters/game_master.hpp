@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
@@ -47,6 +48,22 @@ struct GameMasterDef {
     std::string name_key;
     bool tactical = false;
     GmWeights weights;
+};
+
+// A difficulty level: which game master plays and how it is softened.
+// The calibration goals are not rules; the training tool reads them.
+struct DifficultyDef {
+    static constexpr std::string_view kStandard = "standard";  // built in: classic master, nothing changed
+
+    std::string id{kStandard};
+    std::string name_key;
+    std::string game_master{GameMasterDef::kClassic};
+    int blunder = 0;               // per mille: chance per monster turn of playing by the classic rule
+    int monster_hp_percent = 100;  // of each monster's hit points, rounded, at least 1
+    int target_win_percent = 0;    // average hero win rate the level aims for (0: no goal)
+    int floor_win_percent = 0;     // no tested matchup may fall below this
+
+    int monster_hp(int base) const { return std::max(1, (base * monster_hp_percent + 50) / 100); }
 };
 
 }  // namespace rpg::monsters

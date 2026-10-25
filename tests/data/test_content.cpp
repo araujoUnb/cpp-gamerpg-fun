@@ -174,3 +174,30 @@ TEST_CASE("Game master profiles load and are validated") {
     j["weights"] = nlohmann::json::object();
     CHECK_THROWS_AS(data::game_master_from_json(j), data::DataError);
 }
+
+TEST_CASE("Difficulty levels load and are validated") {
+    const auto content = data::load_content(kData);
+    int previous_target = 101;
+    for (const auto* id : {"easy", "normal", "hard"}) {
+        CAPTURE(id);
+        const auto* d = content.difficulties.find(id);
+        REQUIRE(d);
+        CHECK(content.text.contains(d->name_key));
+        CHECK(d->target_win_percent < previous_target);  // harder levels aim lower
+        CHECK(d->floor_win_percent > 0);                 // the heroes can always win
+        previous_target = d->target_win_percent;
+        CHECK(data::difficulty_from_json(data::to_json(*d), content).monster_hp_percent == d->monster_hp_percent);
+    }
+    auto j = data::to_json(*content.difficulties.find("normal"));
+    j["game_master"] = "nobody";
+    CHECK_THROWS_AS(data::difficulty_from_json(j, content), data::DataError);
+    j = data::to_json(*content.difficulties.find("normal"));
+    j["blunder"] = 1001;
+    CHECK_THROWS_AS(data::difficulty_from_json(j, content), data::DataError);
+    j = data::to_json(*content.difficulties.find("normal"));
+    j["monster_hp_percent"] = 5;
+    CHECK_THROWS_AS(data::difficulty_from_json(j, content), data::DataError);
+    j = data::to_json(*content.difficulties.find("normal"));
+    j["calibration"]["floor_win_percent"] = 90;
+    CHECK_THROWS_AS(data::difficulty_from_json(j, content), data::DataError);
+}

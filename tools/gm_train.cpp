@@ -4,8 +4,14 @@
 // Every candidate of a generation plays the same seeds, so they are compared
 // on equal dice. Prints progress to stderr and the trained profile as JSON.
 //
+// With --calibrate it trains nothing: it tries a grid of blunder chances and
+// monster HP for the tactical master in data/, and for every difficulty with
+// calibration goals picks the setting closest to its target win rate whose
+// every matchup stays at or above the floor. Writes <out>/<id>.json.
+//
 //   gamerpg_gm_train [--generations 200] [--population 64] [--seeds 40]
 //                    [--threads N] [--eval-seeds 400] [--data DIR] [--out FILE]
+//   gamerpg_gm_train --calibrate [--eval-seeds 1000] [--threads N] [--out DIR]
 #include "combat/auto_player.hpp"
 #include "combat/combat.hpp"
 #include "data/content.hpp"
@@ -36,6 +42,7 @@ struct Options {
     int threads = static_cast<int>(std::max(1u, std::thread::hardware_concurrency()));
     std::string data_dir = GAMERPG_DATA_DIR;
     std::string out;
+    bool calibrate = false;
 };
 
 struct Matchup {
@@ -70,15 +77,22 @@ Vec to_vec(const monsters::GmWeights& w) {
 
 // Plays every matchup with `seeds` seeds starting at `seed0`.
 Result evaluate(data::Content& content, const monsters::GameMasterDef& gm, const std::vector<Matchup>& matchups,
-                std::uint64_t seed0, int seeds) {
+                std::uint64_t seed0, int seeds, int blunder = 0, int hp_percent = 100) {
     content.game_masters = {};
     content.game_masters.add(gm);
+    monsters::DifficultyDef level;
+    level.id = "train";
+    level.game_master = gm.id;
+    level.blunder = blunder;
+    level.monster_hp_percent = hp_percent;
+    content.difficulties = {};
+    content.difficulties.add(level);
     const combat::AutoPlayer player;
     double fitness = 0;
     int defeats = 0, games = 0;
     for (const auto& mu : matchups) {
         for (int s = 0; s < seeds; ++s) {
-            combat::Combat c(content, *mu.scenario, mu.party, seed0 + static_cast<std::uint64_t>(s), gm.id);
+            combat::Combat c(content, *mu.scenario, mu.party, seed0 + static_cast<std::uint64_t>(s), level.id);
             while (!c.finished()) c.decide(player.choose(c, *c.pending()));
             ++games;
             if (c.outcome() == combat::Outcome::Defeat) {
@@ -109,6 +123,10 @@ std::optional<Options> parse(int argc, char** argv) {
     Options o;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
+        if (a == "--calibrate") {
+            o.calibrate = true;
+            continue;
+        }
         if (i + 1 >= argc) return std::nullopt;
         const std::string v = argv[++i];
         if (a == "--generations") o.generations = std::atoi(v.c_str());
@@ -130,7 +148,8 @@ int main(int argc, char** argv) {
     const auto opts = parse(argc, argv);
     if (!opts) {
         std::cerr << "uso: gamerpg_gm_train [--generations N] [--population N] [--seeds N] [--eval-seeds N]"
-                     " [--threads N] [--data DIR] [--out FILE]\n";
+                     " [--threads N] [--data DIR] [--out FILE]\n"
+                     "     gamerpg_gm_train --calibrate [--eval-seeds N] [--threads N] [--data DIR] [--out DIR]\n";
         return 2;
     }
     const auto base = data::load_content(opts->data_dir);
@@ -182,6 +201,72 @@ int main(int argc, char** argv) {
         }
         for (auto& th : pool) th.join();
     };
+
+    if (opts->calibrate) {
+        if (!start) {
+            std::cerr << "falta data/game_masters/tactical.json\n";
+            return 1;
+        }
+        std::vector<std::pair<int, int>> grid;  // blunder, monster HP %
+        for (int b = 0; b <= 1000; b += 100) {
+            for (int hp = 50; hp <= 120; hp += 10) grid.emplace_back(b, hp);
+        }
+        // win[g][m]: hero win rate of matchup m at grid point g, on the same seeds for every point.
+        std::vector<std::vector<double>> win(grid.size(), std::vector<double>(matchups.size()));
+        parallel(static_cast<int>(grid.size() * matchups.size()), [&](int i, data::Content& content) {
+            const auto g = static_cast<std::size_t>(i) / matchups.size(), m = static_cast<std::size_t>(i) % matchups.size();
+            win[g][m] = 1 - evaluate(content, *start, {matchups[m]}, 9'000'000'000ull, opts->eval_seeds, grid[g].first,
+                                     grid[g].second).defeat_rate;
+        });
+        int status = 0;
+        for (const auto& level : base.difficulties) {
+            if (level.target_win_percent == 0) continue;
+            const double target = level.target_win_percent / 100.0, floor = level.floor_win_percent / 100.0;
+            std::size_t best = 0;
+            double best_gap = 1e9, best_min = -1;
+            bool feasible = false;
+            for (std::size_t g = 0; g < grid.size(); ++g) {
+                double avg = 0, low = 1;
+                for (double w : win[g]) {
+                    avg += w / double(matchups.size());
+                    low = std::min(low, w);
+                }
+                const bool ok = low >= floor;
+                // Floor first; then the closest average; without any feasible point, the highest floor.
+                if (ok && (!feasible || std::abs(avg - target) < best_gap)) {
+                    best = g;
+                    best_gap = std::abs(avg - target);
+                    feasible = true;
+                } else if (!feasible && low > best_min) {
+                    best = g;
+                    best_min = low;
+                }
+            }
+            auto tuned = level;
+            tuned.game_master = start->id;
+            tuned.blunder = grid[best].first;
+            tuned.monster_hp_percent = grid[best].second;
+            double avg = 0;
+            std::cerr << "\n" << level.id << ": deslize " << tuned.blunder << "‰, PV dos monstros " << tuned.monster_hp_percent
+                      << "%" << (feasible ? "" : "  ** NENHUM PONTO RESPEITA O PISO **") << '\n';
+            for (std::size_t m = 0; m < matchups.size(); ++m) {
+                const double w = win[best][m];
+                avg += w / double(matchups.size());
+                std::cerr << "  " << std::left << std::setw(26) << matchups[m].label << std::lround(100 * w) << '%'
+                          << (w < floor ? "  abaixo do piso" : "") << '\n';
+            }
+            std::cerr << "  média " << std::lround(100 * avg) << "% (alvo " << level.target_win_percent << "%, piso "
+                      << level.floor_win_percent << "%)\n";
+            if (!feasible) status = 3;
+            const auto text = data::to_json(tuned).dump(2) + "\n";
+            if (opts->out.empty()) {
+                std::cout << text;
+            } else {
+                std::ofstream(std::filesystem::path(opts->out) / (level.id + ".json")) << text;
+            }
+        }
+        return status;
+    }
 
     Vec mean = to_vec(trained.weights);
     Vec sigma{};
