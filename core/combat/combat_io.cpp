@@ -16,7 +16,7 @@ using json = nlohmann::json;
 
 namespace {
 
-constexpr int kSaveVersion = 1;
+constexpr int kSaveVersion = 2;
 
 constexpr std::array kEventKinds{
     Event::Kind::RoundStarted,   Event::Kind::CardsSelected,     Event::Kind::MonsterCardDrawn,
@@ -222,6 +222,7 @@ json Combat::to_json() const {
     return {
         {"version", kSaveVersion},
         {"rng", data::to_json(rng_.state())},
+        {"game_master", gm_.id},
         {"scenario", scenario},
         {"heroes", heroes},
         {"monsters", monsters},
@@ -255,13 +256,19 @@ Combat Combat::from_json(const data::Content& content, const json& j) {
                                           {Stage::Executing, "executing"},
                                           {Stage::LongRestLoss, "long_rest_loss"}}}};
     const std::string where = "save";
-    only_keys(j, {"version", "rng", "scenario", "heroes", "monsters", "decks", "round", "phase", "outcome", "order",
+    only_keys(j, {"version", "rng", "game_master", "scenario", "heroes", "monsters", "decks", "round", "phase", "outcome", "order",
                   "turn", "cursor", "end_resolved", "progress", "events"}, where);
     if (get_int(j, "version", where) != kSaveVersion) fail(where, "unsupported save version");
 
     Combat c(content);
     const auto& rules = content.rules;
     c.rng_ = dice::Rng::from_state(data::rng_state_from_json(field(j, "rng", where), where + ".rng"));
+    {
+        const auto id = get_string(j, "game_master", where);
+        auto gm = find_game_master(content, id);
+        if (!gm) fail(where, "unknown game master '" + id + "'");
+        c.gm_ = std::move(*gm);
+    }
 
     // Scenario.
     {

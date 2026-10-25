@@ -36,8 +36,11 @@ std::size_t Decision::option_count() const {
 // --- Setup ------------------------------------------------------------------
 
 Combat::Combat(const data::Content& content, scenario::ScenarioDef scenario,
-               std::vector<character::CharacterSheet> party, std::uint64_t seed)
+               std::vector<character::CharacterSheet> party, std::uint64_t seed, std::string_view game_master)
     : content_(&content), scenario_(std::move(scenario)), rng_(seed) {
+    auto gm = find_game_master(content, game_master);
+    if (!gm) throw std::invalid_argument("unknown game master '" + std::string(game_master) + "'");
+    gm_ = std::move(*gm);
     if (party.empty()) throw std::invalid_argument("the party is empty");
     if (party.size() > scenario_.hero_starts.size()) throw std::invalid_argument("more heroes than start hexes");
 
@@ -564,16 +567,19 @@ void Combat::run_monster_turn(std::size_t mi) {
         switch (a.type) {
             case ActionType::Move: {
                 if (has_effect(m.conditions, &ConditionEffects::no_move)) break;
-                int range = 1;
-                for (std::size_t n = k + 1; n < card.actions.size(); ++n) {
-                    if (card.actions[n].type == ActionType::Attack) {
-                        range = card.actions[n].range;
-                        break;
-                    }
+                const cards::ActionDef* attack = nullptr;
+                for (std::size_t n = k + 1; n < card.actions.size() && !attack; ++n) {
+                    if (card.actions[n].type == ActionType::Attack) attack = &card.actions[n];
                 }
-                const auto target = monster_focus(mi, range);
-                if (!target) break;
-                const Hex to = monster_destination(mi, *target, a.value, range, a.jump);
+                Hex to = m.hex;
+                if (gm_.tactical) {
+                    to = gm_destination(mi, a, attack);
+                } else {
+                    const int range = attack ? attack->range : 1;
+                    const auto target = monster_focus(mi, range);
+                    if (!target) break;
+                    to = monster_destination(mi, *target, a.value, range, a.jump);
+                }
                 if (to != m.hex) {
                     const auto path = a.jump ? std::vector<Hex>{to}
                                              : find_path(scenario_.map, m.hex, to, [&](Hex x) { return monster_can_enter(x); });
@@ -582,16 +588,22 @@ void Combat::run_monster_turn(std::size_t mi) {
                 break;
             }
             case ActionType::Attack: {
-                std::vector<std::pair<int, std::size_t>> in_range;
-                for (std::size_t i = 0; i < heroes_.size(); ++i) {
-                    const auto& h = heroes_[i];
-                    if (h.status == HeroStatus::Active && in_reach(m.hex, h.hex, a.range)) {
-                        in_range.emplace_back(distance(m.hex, h.hex), i);
+                std::vector<std::size_t> order;
+                if (gm_.tactical) {
+                    order = gm_target_order(mi, a);
+                } else {
+                    std::vector<std::pair<int, std::size_t>> in_range;
+                    for (std::size_t i = 0; i < heroes_.size(); ++i) {
+                        const auto& h = heroes_[i];
+                        if (h.status == HeroStatus::Active && in_reach(m.hex, h.hex, a.range)) {
+                            in_range.emplace_back(distance(m.hex, h.hex), i);
+                        }
                     }
+                    std::sort(in_range.begin(), in_range.end());
+                    for (const auto& [d, i] : in_range) order.push_back(i);
                 }
-                std::sort(in_range.begin(), in_range.end());
-                for (std::size_t n = 0; n < in_range.size() && static_cast<int>(n) < a.targets && !finished(); ++n) {
-                    monster_attacks_hero(mi, in_range[n].second, a);
+                for (std::size_t n = 0; n < order.size() && static_cast<int>(n) < a.targets && !finished(); ++n) {
+                    monster_attacks_hero(mi, order[n], a);
                 }
                 break;
             }
@@ -602,7 +614,11 @@ void Combat::run_monster_turn(std::size_t mi) {
             case ActionType::Condition:
                 if (a.target == TargetKind::Enemy) {
                     std::optional<std::size_t> pick;
-                    for (std::size_t i = 0; i < heroes_.size(); ++i) {
+                    if (gm_.tactical) {
+                        const auto order = gm_target_order(mi, a);
+                        if (!order.empty()) pick = order.front();
+                    }
+                    for (std::size_t i = 0; i < heroes_.size() && !gm_.tactical; ++i) {
                         const auto& h = heroes_[i];
                         if (h.status != HeroStatus::Active || !in_reach(m.hex, h.hex, a.range)) continue;
                         if (!pick || distance(m.hex, h.hex) < distance(m.hex, heroes_[*pick].hex)) pick = i;
@@ -707,13 +723,17 @@ void Combat::hero_attacks_monster(std::size_t hi, std::size_t mi, const cards::A
     if (a.pull > 0) force_move(mi, h.hex, a.pull, false);
 }
 
+dice::RollMode Combat::monster_roll_mode(const MonsterState& m, const cards::ActionDef& a) const {
+    return dice::combine_mode(a.advantage || has_effect(m.conditions, &ConditionEffects::attack_advantage),
+                              has_effect(m.conditions, &ConditionEffects::attack_disadvantage));
+}
+
 void Combat::monster_attacks_hero(std::size_t mi, std::size_t hi, const cards::ActionDef& a) {
     const auto& m = monsters_[mi];
     const auto& def = def_of(m);
     auto& h = heroes_[hi];
     const int ac = character::armor_class(h.sheet, class_of(h));
-    const auto mode = dice::combine_mode(a.advantage || has_effect(m.conditions, &ConditionEffects::attack_advantage),
-                                         has_effect(m.conditions, &ConditionEffects::attack_disadvantage));
+    const auto mode = monster_roll_mode(m, a);
     const auto check = dice::roll_check(rng_, def.attack_bonus, ac, mode);
     emit({.kind = Event::Kind::AttackRolled, .actor = m.id, .target = h.sheet.id,
           .value = mode == dice::RollMode::Advantage ? 1 : mode == dice::RollMode::Disadvantage ? -1 : 0,

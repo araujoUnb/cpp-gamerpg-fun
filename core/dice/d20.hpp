@@ -40,4 +40,14 @@ CheckResult resolve_check(const D20Roll& roll, int modifier, int target);
 
 CheckResult roll_check(Rng& rng, int modifier, int target, RollMode mode = RollMode::Normal);
 
+// Exact odds of a check, counted out of 400 equally likely outcomes (two d20s,
+// so advantage and disadvantage are exact too). Integers keep every decision
+// built on them identical across platforms.
+struct CheckOdds {
+    static constexpr int kTotal = 400;
+    int success = 0;   // outcomes that succeed, criticals included
+    int critical = 0;  // outcomes with a natural 20
+};
+CheckOdds check_odds(int modifier, int target, RollMode mode = RollMode::Normal);
+
 }  // namespace rpg::dice

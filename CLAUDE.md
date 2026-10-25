@@ -11,6 +11,8 @@ ctest --test-dir build --output-on-failure
 ./build/cli/gamerpg_cli                 # joga a arena no terminal
 ./build/cli/gamerpg_cli --auto --seed 3 # assiste o jogador automático
 ./build/cli/gamerpg_cli --bench 2000    # velocidade e taxa de vitória (use build Release)
+./build/cli/gamerpg_cli --mestre classic # mestre do jogo antigo (padrão: tactical)
+./build/tools/gamerpg_gm_train --help   # treina os pesos do mestre (rodar no lab10, ver treino/gm.sbatch)
 ```
 
 ## Regras de trabalho

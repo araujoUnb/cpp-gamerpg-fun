@@ -23,6 +23,7 @@ add_library(gamerpg_core STATIC
     combat/combat.cpp
     combat/combat_io.cpp
     combat/auto_player.cpp
+    combat/game_master.cpp
     monsters/monster_def.cpp
     data/json_io.cpp
     data/class_registry.cpp

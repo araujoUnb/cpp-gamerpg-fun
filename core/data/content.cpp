@@ -88,6 +88,44 @@ monsters::MonsterDef monster_from_json(const json& j, const character::Ruleset& 
     return m;
 }
 
+monsters::GameMasterDef game_master_from_json(const json& j, const std::string& where) {
+    only_keys(j, {"id", "name", "tactical", "weights"}, where);
+    monsters::GameMasterDef gm;
+    gm.id = get_string(j, "id", where);
+    if (gm.id.empty()) fail(where, "'id' must not be empty");
+    const std::string ctx = where + " [" + gm.id + "]";
+    gm.name_key = get_string(j, "name", ctx);
+    gm.tactical = get_bool(j, "tactical", ctx);
+    if (gm.tactical) {
+        const auto& w = field(j, "weights", ctx);
+        require_object(w, ctx + ".weights");
+        for (const auto& [key, _] : w.items()) {
+            bool known = false;
+            for (const auto& [name, member] : monsters::kGmWeightFields) known = known || name == key;
+            if (!known) fail(ctx + ".weights", "unknown field " + quote_key(key));
+        }
+        for (const auto& [name, member] : monsters::kGmWeightFields) {
+            const std::string key(name);
+            const int v = get_int(w, key.c_str(), ctx + ".weights");
+            if (v < -kMaxGmWeight || v > kMaxGmWeight) fail(ctx + ".weights", quote_key(key) + " out of range");
+            gm.weights.*member = v;
+        }
+    } else if (j.contains("weights")) {
+        fail(ctx, "'weights' only apply to a tactical game master");
+    }
+    return gm;
+}
+
+json to_json(const monsters::GameMasterDef& gm) {
+    json j{{"id", gm.id}, {"name", gm.name_key}, {"tactical", gm.tactical}};
+    if (gm.tactical) {
+        json w = json::object();
+        for (const auto& [name, member] : monsters::kGmWeightFields) w[std::string(name)] = gm.weights.*member;
+        j["weights"] = w;
+    }
+    return j;
+}
+
 Content load_content(const fs::path& data_dir, const std::string& language) {
     Content c;
     c.rules = ruleset_from_json(read_json_file(data_dir / "rules" / "ruleset.json"), "ruleset.json");
@@ -100,6 +138,11 @@ Content load_content(const fs::path& data_dir, const std::string& language) {
         } catch (const std::invalid_argument& e) {
             fail(file.filename().string(), e.what());
         }
+    }
+    for (const auto& file : json_files(data_dir / "game_masters")) {
+        auto gm = game_master_from_json(read_json_file(file), file.filename().string());
+        const auto id = gm.id;
+        if (!c.game_masters.add(std::move(gm))) fail(file.filename().string(), "duplicate game master id '" + id + "'");
     }
     c.text = load_text_table(data_dir / "lang" / (language + ".json"));
     return c;

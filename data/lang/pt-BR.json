@@ -122,6 +122,8 @@
   "card.cleric.infuse_vigor.name": "Infundir Vigor",
   "card.cleric.divine_light.name": "Luz Divina",
   "card.cleric.intervention.name": "Intervenção",
+  "game_master.classic.name": "Mestre clássico",
+  "game_master.tactical.name": "Mestre tático",
   "monster.bandit.name": "Bandido",
   "monster.skeleton_archer.name": "Esqueleto Arqueiro",
   "monster.wolf.name": "Lobo",

@@ -4,6 +4,8 @@
 #include "cards/deck.hpp"
 #include "data/card_io.hpp"
 #include "data/class_registry.hpp"
+#include "data/content.hpp"
+#include "data/data_error.hpp"
 #include "data/json_io.hpp"
 #include "data/text_table.hpp"
 
@@ -146,4 +148,29 @@ TEST_CASE("Cards of the first four classes load and fit the rules") {
         CHECK(text.contains(c.name_key));
         CHECK(text.contains(c.description_key));
     }
+}
+
+TEST_CASE("Game master profiles load and are validated") {
+    const auto content = data::load_content(kData);
+    const auto* classic = content.game_masters.find("classic");
+    const auto* tactical = content.game_masters.find("tactical");
+    REQUIRE(classic);
+    REQUIRE(tactical);
+    CHECK_FALSE(classic->tactical);
+    CHECK(tactical->tactical);
+    CHECK(content.text.contains(tactical->name_key));
+    CHECK(data::game_master_from_json(data::to_json(*tactical)).weights == tactical->weights);
+
+    auto j = data::to_json(*tactical);
+    j["weights"]["luck"] = 1;
+    CHECK_THROWS_AS(data::game_master_from_json(j), data::DataError);
+    j = data::to_json(*tactical);
+    j["weights"].erase("steps");
+    CHECK_THROWS_AS(data::game_master_from_json(j), data::DataError);
+    j = data::to_json(*tactical);
+    j["weights"]["steps"] = data::kMaxGmWeight + 1;
+    CHECK_THROWS_AS(data::game_master_from_json(j), data::DataError);
+    j = data::to_json(*classic);
+    j["weights"] = nlohmann::json::object();
+    CHECK_THROWS_AS(data::game_master_from_json(j), data::DataError);
 }

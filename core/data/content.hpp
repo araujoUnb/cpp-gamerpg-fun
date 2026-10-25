@@ -4,6 +4,7 @@
 #include "character/ruleset.hpp"
 #include "data/class_registry.hpp"
 #include "data/text_table.hpp"
+#include "monsters/game_master.hpp"
 #include "monsters/monster_def.hpp"
 #include "scenario/scenario_def.hpp"
 
@@ -22,6 +23,7 @@ struct Content {
     ClassRegistry classes;
     cards::CardRegistry cards;
     monsters::MonsterRegistry monsters;
+    util::IdTable<monsters::GameMasterDef> game_masters;
     TextTable text;
 };
 
@@ -31,6 +33,11 @@ Content load_content(const std::filesystem::path& data_dir, const std::string& l
 
 monsters::MonsterDef monster_from_json(const json& j, const character::Ruleset& rules,
                                        const std::string& where = "monster");
+
+// A game master profile; weights outside [-kMaxGmWeight, kMaxGmWeight] are rejected.
+inline constexpr int kMaxGmWeight = 10000;
+monsters::GameMasterDef game_master_from_json(const json& j, const std::string& where = "game master");
+json to_json(const monsters::GameMasterDef& gm);
 
 // Checks map bounds, overlapping starts and unknown monster types.
 scenario::ScenarioDef scenario_from_json(const json& j, const Content& content,

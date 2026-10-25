@@ -103,6 +103,19 @@ data::Content test_content() {
     c.monsters.add(monster("biter", 30, 5, 30, 0, {"bite", "bite", 1, {attack(6)}, false}));
     // Walks toward the heroes, hits for nothing.
     c.monsters.add(monster("walker", 30, 5, 0, 0, {"walk", "walk", 50, {move(3), attack(1)}, false}));
+    // Shoots from up to 3 hexes away, after moving 2.
+    c.monsters.add(monster("archer", 30, 5, 0, 0, {"shoot", "shoot", 1, {move(2), attack(1, 3)}, false}));
+
+    monsters::GameMasterDef gm;
+    gm.id = "sharp";
+    gm.name_key = "sharp";
+    gm.tactical = true;
+    gm.weights.expected_damage = 10;
+    gm.weights.down_chance = 50;
+    gm.weights.exposure_ranged = -50;
+    gm.weights.approach = -20;
+    gm.weights.steps = -1;
+    c.game_masters.add(gm);
     return c;
 }
 
@@ -417,7 +430,7 @@ TEST_CASE("Random play on every scenario always ends and keeps every invariant")
         std::vector<character::CharacterSheet> party;
         for (const auto& [id, cls] : parties[seed % 2]) party.push_back(real_hero(content, id, cls));
 
-        Combat c(content, scenarios[(seed / 2) % 2], party, seed);
+        Combat c(content, scenarios[(seed / 2) % 2], party, seed, (seed / 4) % 2 ? "tactical" : "classic");
         dice::Rng chooser(seed * 7919 + 1);
         int decisions = 0;
         while (!c.finished()) {
@@ -487,7 +500,8 @@ TEST_CASE("Saving and loading at any point continues the exact same battle") {
     int saves = 0;
     for (std::uint64_t seed = 0; seed < 40; ++seed) {
         CAPTURE(seed);
-        Combat c(content, scenarios[seed % 2], {real_hero(content, "h1", "rogue"), real_hero(content, "h2", "cleric")}, seed);
+        Combat c(content, scenarios[seed % 2], {real_hero(content, "h1", "rogue"), real_hero(content, "h2", "cleric")}, seed,
+                 seed % 3 == 0 ? "classic" : "tactical");
         dice::Rng chooser(seed + 100);
         // Mix of heuristic and random choices to visit many states.
         auto choose = [&](const Combat& x, dice::Rng& r) {
@@ -552,6 +566,71 @@ TEST_CASE("Broken saves are rejected") {
     bad = good;
     bad["extra"] = 1;
     CHECK_THROWS_AS(Combat::from_json(content, bad), data::DataError);
+
+    bad = good;
+    bad["game_master"] = "nobody";
+    CHECK_THROWS_AS(Combat::from_json(content, bad), data::DataError);
+}
+
+// --- Game master -----------------------------------------------------------------
+
+TEST_CASE("The game master is chosen at setup and kept by saves") {
+    const auto content = test_content();
+    const auto s = arena({{"dummy", {3, 0}}});
+    CHECK(Combat(content, s, {hero(content, "a")}, 1).game_master().id == "classic");
+    const Combat c(content, s, {hero(content, "a")}, 1, "sharp");
+    CHECK(c.game_master().tactical);
+    CHECK(c.to_json()["game_master"] == "sharp");
+    CHECK(Combat::from_json(content, c.to_json()).game_master().id == "sharp");
+    CHECK_THROWS_AS(Combat(content, s, {hero(content, "a")}, 1, "nobody"), std::invalid_argument);
+}
+
+TEST_CASE("The tactical game master goes for the hero it can drop") {
+    const auto content = test_content();
+    for (const std::string gm : {"classic", "sharp"}) {
+        CAPTURE(gm);
+        auto weak = hero(content, "b");
+        weak.current_hp = 4;
+        // Both heroes stand next to the biter; the classic rule takes the first one.
+        Combat c(content, arena({{"biter", {0, 0}}}, {{1, 0}, {-1, 0}}), {hero(content, "a"), weak}, 3, gm);
+        select(c, "tester.hit", "tester.stun");
+        select(c, "tester.hit", "tester.stun");
+        const auto hits = of_kind(c, Event::Kind::AttackRolled);
+        REQUIRE(hits.size() == 1);
+        CHECK(hits[0].target == (gm == "sharp" ? "b" : "a"));
+    }
+}
+
+TEST_CASE("A tactical ranged monster steps away before shooting") {
+    const auto content = test_content();
+    for (const std::string gm : {"classic", "sharp"}) {
+        CAPTURE(gm);
+        Combat c(content, arena({{"archer", {1, 0}}}), {hero(content, "a")}, 1, gm);
+        select(c, "tester.hit", "tester.stun");
+        REQUIRE(of_kind(c, Event::Kind::AttackRolled).size() == 1);
+        const int d = distance(c.monsters()[0].hex, c.heroes()[0].hex);
+        if (gm == "sharp") {
+            CHECK(d >= 2);
+            CHECK(d <= 3);
+        } else {
+            CHECK(d == 1);  // already in range: the classic rule does not move
+        }
+    }
+}
+
+TEST_CASE("The tactical game master plays every scenario within the rules") {
+    const auto content = data::load_content(kData);
+    REQUIRE(content.game_masters.find("tactical"));
+    const auto s = data::load_scenario(kData / "scenarios" / "ruins.json", content);
+    const AutoPlayer player;
+    for (std::uint64_t seed = 0; seed < 30; ++seed) {
+        CAPTURE(seed);
+        Combat c(content, s, {real_hero(content, "h1", "fighter"), real_hero(content, "h2", "wizard")}, seed, "tactical");
+        while (!c.finished()) {
+            c.decide(player.choose(c, *c.pending()));
+            check_invariants(c);
+        }
+    }
 }
 
 // --- Terrain -------------------------------------------------------------------

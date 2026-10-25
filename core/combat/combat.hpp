@@ -5,12 +5,14 @@
 #include "combat/events.hpp"
 #include "combat/hex.hpp"
 #include "data/content.hpp"
+#include "dice/d20.hpp"
 #include "dice/rng.hpp"
 #include "scenario/scenario_def.hpp"
 
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace rpg::combat {
@@ -92,8 +94,10 @@ class Combat {
 public:
     // Heroes must be valid for their class, with a valid deck, one per hero start.
     // Throws std::invalid_argument otherwise.
+    // `game_master` is the id of a profile in content.game_masters; "classic"
+    // always exists. Throws std::invalid_argument for an unknown one.
     Combat(const data::Content& content, scenario::ScenarioDef scenario, std::vector<character::CharacterSheet> party,
-           std::uint64_t seed);
+           std::uint64_t seed, std::string_view game_master = monsters::GameMasterDef::kClassic);
 
     Outcome outcome() const { return outcome_; }
     bool finished() const { return outcome_ != Outcome::Ongoing; }
@@ -109,6 +113,7 @@ public:
     const std::vector<HeroState>& heroes() const { return heroes_; }
     const std::vector<MonsterState>& monsters() const { return monsters_; }
     const data::Content& content() const { return *content_; }
+    const monsters::GameMasterDef& game_master() const { return gm_; }
 
     // Initiative of a creature this round, or nullopt if it has none.
     std::optional<int> initiative_of(const std::string& id) const;
@@ -159,6 +164,18 @@ private:
     std::optional<std::size_t> monster_focus(std::size_t monster, int range) const;
     Hex monster_destination(std::size_t monster, std::size_t target, int steps, int range, bool jump) const;
     void run_monster_turn(std::size_t monster);
+    dice::RollMode monster_roll_mode(const MonsterState& m, const cards::ActionDef& a) const;
+
+    // Tactical game master (game_master.cpp).
+    // The profile with that id; "classic" works even when the content lacks it.
+    static std::optional<monsters::GameMasterDef> find_game_master(const data::Content& content, std::string_view id);
+    bool hero_heals(const HeroState& h) const;
+    // Score of attacking each hero with `a`, minimum long for heroes that cannot be targeted.
+    std::vector<long> gm_target_scores(std::size_t monster, const cards::ActionDef& a) const;
+    // Where to end `move`, given the attack that follows it in the card (if any).
+    Hex gm_destination(std::size_t monster, const cards::ActionDef& move, const cards::ActionDef* attack) const;
+    // Heroes in reach of `a` from where the monster stands, best target first.
+    std::vector<std::size_t> gm_target_order(std::size_t monster, const cards::ActionDef& a) const;
     bool step_end_of_round();
     void begin_round();
 
@@ -200,6 +217,7 @@ private:
     std::optional<std::size_t> monster_index(const std::string& id) const;
 
     const data::Content* content_;
+    monsters::GameMasterDef gm_;
     scenario::ScenarioDef scenario_;
     dice::Rng rng_;
     std::vector<HeroState> heroes_;

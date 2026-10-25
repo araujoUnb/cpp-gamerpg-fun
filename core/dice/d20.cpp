@@ -69,6 +69,18 @@ CheckResult resolve_check(const D20Roll& roll, int modifier, int target) {
     return r;
 }
 
+CheckOdds check_odds(int modifier, int target, RollMode mode) {
+    // Success only grows with the face: 20 always, 1 never, otherwise face + modifier >= target.
+    const int faces = 1 + std::clamp(20 - std::max(target - modifier, 2), 0, 18);
+    const int fail = 20 - faces;
+    switch (mode) {
+        case RollMode::Normal: return {faces * 20, 20};
+        case RollMode::Advantage: return {400 - fail * fail, 400 - 19 * 19};
+        case RollMode::Disadvantage: return {faces * faces, 1};
+    }
+    return {};
+}
+
 CheckResult roll_check(Rng& rng, int modifier, int target, RollMode mode) {
     return resolve_check(roll_d20(rng, mode), modifier, target);
 }

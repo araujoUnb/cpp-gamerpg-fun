@@ -1,0 +1,16 @@
+{
+  "id": "tactical",
+  "name": "game_master.tactical.name",
+  "tactical": true,
+  "weights": {
+    "approach": -89,
+    "down_chance": 344,
+    "expected_damage": 10,
+    "exposure_melee": 26,
+    "exposure_ranged": -291,
+    "healer": -450,
+    "steps": 24,
+    "surround": 14,
+    "wounded": 179
+  }
+}

@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(GAMERPG_BUILD_TESTS "Build unit tests" ON)
 option(GAMERPG_BUILD_CLI "Build the terminal runner" ON)
+option(GAMERPG_BUILD_TOOLS "Build offline tools (game master training)" ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
@@ -27,6 +28,10 @@ add_subdirectory(core)
 
 if(GAMERPG_BUILD_CLI)
     add_subdirectory(cli)
+endif()
+
+if(GAMERPG_BUILD_TOOLS)
+    add_subdirectory(tools)
 endif()
 
 if(GAMERPG_BUILD_TESTS)

@@ -39,12 +39,13 @@ core/
   character/   atributos, modificadores, classes, níveis, ficha
   cards/       cartas, baralho, mão, descarte, cartas perdidas
   combat/      grade hexagonal, iniciativa, turnos, efeitos, condições
-  monsters/    IA simples e baralho de ações dos monstros
+  monsters/    baralho de ações dos monstros e perfis do mestre do jogo
   scenario/    mapa, objetivos, gatilhos
   campaign/    progresso entre cenários, recompensas, flags de história
   data/        carregamento e validação dos JSON
 bindings/      GDExtension: expõe o núcleo ao Godot, sem regras
 cli/           executável de terminal (etapa 4): joga e mede um cenário
+tools/         ferramentas fora do jogo: treino do mestre do jogo
 godot/         projeto Godot: cenas, GDScript, temas, shaders, arte
 data/          JSON de conteúdo
 stories/       arquivos .ink
@@ -125,7 +126,10 @@ Detalhes definidos na etapa 3:
 ### Monstros
 
 - Cada tipo de monstro tem um pequeno baralho de ações. A cada rodada uma carta é virada, com iniciativa e ação.
-- IA simples: andar até o herói mais próximo que consegue atacar, atacar, e respeitar a ação da carta. "Mais próximo" é medido em passos reais, contornando obstáculos e heróis. Um monstro passa por outros monstros, mas não termina o movimento em casa ocupada. Empurrar e puxar ainda não são usados por monstros.
+- Os monstros são jogados por um **mestre do jogo**, escolhido ao criar o combate e guardado no save. Os perfis ficam em `data/game_masters/`. Em qualquer perfil, o monstro respeita a ação da carta: um monstro passa por outros monstros, mas não termina o movimento em casa ocupada, e evita armadilhas. Empurrar e puxar ainda não são usados por monstros.
+- **Mestre clássico** (`classic`): andar até o herói mais próximo que consegue atacar e atacar o mais próximo. "Mais próximo" é medido em passos reais, contornando obstáculos e heróis.
+- **Mestre tático** (`tactical`, o padrão do terminal): para cada casa onde o movimento pode terminar, soma peso × característica: dano esperado do ataque seguinte (chance exata no d20 contra a CA), chance de derrubar o herói, herói ferido, herói que cura, monstros já ao lado do alvo, heróis ao lado da casa final (pesos separados para quem ataca corpo a corpo e à distância), passos que faltam até o herói mais próximo quando ninguém está ao alcance e movimento gasto. O ataque e as condições vão nos alvos de maior pontuação. As características são inteiras, com 400 valendo 1, para que a decisão seja exata em qualquer plataforma.
+- Os pesos do mestre tático são treinados fora do jogo (`tools/gm_train.cpp`, método da entropia cruzada) contra o `AutoPlayer`, em todos os cenários e pares de classes, e gravados em JSON.
 - Estatísticas em JSON: CA, PV, atributos, dano, imunidades
 
 ### Condições

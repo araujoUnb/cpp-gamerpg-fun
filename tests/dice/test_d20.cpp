@@ -103,3 +103,25 @@ TEST_CASE("roll_check is deterministic for a seed") {
         REQUIRE(ra.success == rb.success);
     }
 }
+
+TEST_CASE("check_odds matches every pair of dice") {
+    for (const auto mode : {RollMode::Normal, RollMode::Advantage, RollMode::Disadvantage}) {
+        for (int modifier : {-3, 0, 2, 5, 12}) {
+            for (int target = -5; target <= 30; ++target) {
+                int success = 0, critical = 0;
+                for (int a = 1; a <= 20; ++a) {
+                    for (int b = 1; b <= 20; ++b) {
+                        const auto r = resolve_check(make_d20(mode, a, mode == RollMode::Normal ? 0 : b), modifier, target);
+                        success += r.success;
+                        critical += r.critical;
+                    }
+                }
+                CAPTURE(modifier);
+                CAPTURE(target);
+                const auto odds = check_odds(modifier, target, mode);
+                CHECK(odds.success == success);
+                CHECK(odds.critical == critical);
+            }
+        }
+    }
+}

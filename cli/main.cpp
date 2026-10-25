@@ -31,13 +31,14 @@ struct Options {
     int bench = 0;  // > 0: play this many silent auto battles and report speed
     std::string data_dir = GAMERPG_DATA_DIR;
     std::string scenario = "arena";
+    std::string game_master = "tactical";
     std::vector<std::string> classes{"fighter", "wizard"};
 };
 
 const char* const kHeroNames[] = {"Aria", "Bento", "Cora", "Davi"};
 
 void usage() {
-    std::cout << "uso: gamerpg_cli [--seed N] [--auto] [--bench N] [--classes fighter,wizard] [--scenario arena] [--data DIR]\n";
+    std::cout << "uso: gamerpg_cli [--seed N] [--auto] [--bench N] [--classes fighter,wizard] [--scenario arena] [--mestre tactical|classic] [--data DIR]\n";
 }
 
 std::optional<Options> parse_args(int argc, char** argv) {
@@ -68,6 +69,10 @@ std::optional<Options> parse_args(int argc, char** argv) {
             const auto v = next();
             if (!v) return std::nullopt;
             o.scenario = *v;
+        } else if (a == "--mestre") {
+            const auto v = next();
+            if (!v) return std::nullopt;
+            o.game_master = *v;
         } else if (a == "--data") {
             const auto v = next();
             if (!v) return std::nullopt;
@@ -430,7 +435,7 @@ int main(int argc, char** argv) {
             long decisions = 0, events = 0, rounds = 0;
             const auto t0 = std::chrono::steady_clock::now();
             for (int i = 0; i < opts->bench; ++i) {
-                Combat c(content, scenario, party, opts->seed + static_cast<std::uint64_t>(i));
+                Combat c(content, scenario, party, opts->seed + static_cast<std::uint64_t>(i), opts->game_master);
                 while (!c.finished()) {
                     c.decide(player.choose(c, *c.pending()));
                     ++decisions;
@@ -447,10 +452,11 @@ int main(int argc, char** argv) {
             return 0;
         }
 
-        Combat combat(content, std::move(scenario), std::move(party), opts->seed);
+        Combat combat(content, std::move(scenario), std::move(party), opts->seed, opts->game_master);
         const Ui ui(combat);
         const combat::AutoPlayer autoplayer;
-        std::cout << content.text.get(combat.scenario().name_key) << "  (semente " << opts->seed << ")\n";
+        std::cout << content.text.get(combat.scenario().name_key) << "  (semente " << opts->seed << ", "
+                  << content.text.get(combat.game_master().name_key) << ")\n";
 
         std::size_t shown = 0;
         auto flush_events = [&] {
