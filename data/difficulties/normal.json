@@ -1,11 +1,11 @@
 {
-  "blunder": 300,
+  "blunder": 100,
   "calibration": {
     "floor_win_percent": 30,
     "target_win_percent": 60
   },
   "game_master": "tactical",
   "id": "normal",
-  "monster_hp_percent": 70,
+  "monster_hp_percent": 100,
   "name": "difficulty.normal.name"
 }

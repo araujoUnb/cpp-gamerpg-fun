@@ -232,10 +232,19 @@ int main(int argc, char** argv) {
                     low = std::min(low, w);
                 }
                 const bool ok = low >= floor;
-                // Floor first; then the closest average; without any feasible point, the highest floor.
-                if (ok && (!feasible || std::abs(avg - target) < best_gap)) {
+                // Floor first. Within 2 points of the target, the monsters changed the
+                // least, so the level comes from how the master plays; otherwise the
+                // closest average. Without any feasible point, the highest floor.
+                constexpr double kNear = 0.02;
+                const double gap = std::abs(avg - target);
+                const auto hp_change = [&](std::size_t x) { return std::abs(grid[x].second - 100); };
+                const bool better = !feasible || (gap <= kNear && best_gap <= kNear
+                                                      ? hp_change(g) < hp_change(best) ||
+                                                            (hp_change(g) == hp_change(best) && gap < best_gap)
+                                                      : gap < best_gap);
+                if (ok && better) {
                     best = g;
-                    best_gap = std::abs(avg - target);
+                    best_gap = gap;
                     feasible = true;
                 } else if (!feasible && low > best_min) {
                     best = g;
