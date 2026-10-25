@@ -44,6 +44,7 @@ core/
   campaign/    progresso entre cenários, recompensas, flags de história
   data/        carregamento e validação dos JSON
 bindings/      GDExtension: expõe o núcleo ao Godot, sem regras
+cli/           executável de terminal (etapa 4): joga e mede um cenário
 godot/         projeto Godot: cenas, GDScript, temas, shaders, arte
 data/          JSON de conteúdo
 stories/       arquivos .ink
@@ -108,10 +109,23 @@ Detalhes definidos na etapa 3:
 - Os dois descansos exigem pelo menos 2 cartas no descarte. Com menos de 2 cartas na mão, o herói é obrigado a descansar. Se nem isso for possível, ele fica exausto.
 - Isso cria a pressão de tempo do cenário, porque cada carta perdida aproxima a exaustão
 
+### Motor de combate
+
+- O combate é uma máquina de estados (`core/combat/combat.hpp`). Ela avança sozinha (turnos de monstro, rolagens, fim de rodada) até precisar de uma **decisão** de herói, com a lista explícita de opções válidas. Decisões com uma única opção são tomadas automaticamente.
+- Tudo o que acontece vira um **evento** estruturado, em ordem. O frontend anima os eventos e os testes os verificam.
+- O mesmo motor serve ao terminal, ao Godot e ao treino de IA. A interface "decisão → opções → escolher" é o ambiente de aprendizado por reforço.
+- O estado completo, inclusive um turno em andamento, é salvo e carregado em JSON. Carregar e repetir as mesmas escolhas reproduz a batalha exatamente.
+- Iniciativa: menor primeiro; em empate, heróis antes de monstros, depois a segunda carta do herói.
+- Crítico de ataque: dobra o valor da carta, não o modificador.
+- Herói a 0 PV fica caído. No fim de cada rodada ele faz um teste contra a morte: CD 10, 20 natural volta com 1 PV e 1 natural conta como duas falhas. Com 3 sucessos fica estável, com 3 falhas morre. Uma cura o traz de volta. Os números ficam em `ruleset.json`.
+- Derrota quando nenhum herói está de pé; vitória quando todos os monstros caem.
+- Uma condição dura N turnos da criatura afetada. Se foi aplicada no próprio turno dela, esse turno não conta.
+- `AutoPlayer` é um jogador heurístico para os heróis. É usado no modo automático, no teste de balanceamento e como referência de comparação para a IA treinada.
+
 ### Monstros
 
 - Cada tipo de monstro tem um pequeno baralho de ações. A cada rodada uma carta é virada, com iniciativa e ação.
-- IA simples: andar até o herói mais próximo que consegue atacar, atacar, e respeitar a ação da carta
+- IA simples: andar até o herói mais próximo que consegue atacar, atacar, e respeitar a ação da carta. "Mais próximo" é medido em passos reais, contornando obstáculos e heróis. Um monstro passa por outros monstros, mas não termina o movimento em casa ocupada. Empurrar e puxar ainda não são usados por monstros.
 - Estatísticas em JSON: CA, PV, atributos, dano, imunidades
 
 ### Condições

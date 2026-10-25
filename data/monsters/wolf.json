@@ -1,0 +1,94 @@
+{
+  "id": "wolf",
+  "name": "monster.wolf.name",
+  "armor_class": 13,
+  "hit_points": 8,
+  "attack_bonus": 4,
+  "damage_bonus": 2,
+  "attributes": {
+    "str": 12,
+    "dex": 15,
+    "con": 12,
+    "int": 3,
+    "wis": 12,
+    "cha": 6
+  },
+  "deck": [
+    {
+      "id": "lunge",
+      "name": "monster.wolf.card.lunge.name",
+      "initiative": 12,
+      "actions": [
+        {
+          "type": "move",
+          "value": 4
+        },
+        {
+          "type": "attack",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "bite",
+      "name": "monster.wolf.card.bite.name",
+      "initiative": 35,
+      "actions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "advantage": true
+        }
+      ]
+    },
+    {
+      "id": "howl",
+      "name": "monster.wolf.card.howl.name",
+      "initiative": 50,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 1
+        },
+        {
+          "type": "condition",
+          "target": "self",
+          "conditions": [
+            {
+              "id": "strengthened",
+              "rounds": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pack_hunt",
+      "name": "monster.wolf.card.pack_hunt.name",
+      "initiative": 45,
+      "actions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "attack",
+          "value": 3
+        }
+      ],
+      "reshuffle": true
+    }
+  ],
+  "visual": {
+    "color": "#7d8590",
+    "portrait": "monsters/wolf.png"
+  }
+}

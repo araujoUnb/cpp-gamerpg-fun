@@ -19,6 +19,8 @@ add_executable(gamerpg_tests
     data/test_content.cpp
     data/test_card_io.cpp
     cards/test_hero_cards.cpp
+    combat/test_hex.cpp
+    combat/test_combat.cpp
 )
 target_link_libraries(gamerpg_tests PRIVATE gamerpg::core doctest::doctest gamerpg_warnings)
 target_compile_definitions(gamerpg_tests PRIVATE GAMERPG_DATA_DIR="${PROJECT_SOURCE_DIR}/data")

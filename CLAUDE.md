@@ -8,6 +8,9 @@ Especificação completa: [docs/SPEC.md](docs/SPEC.md). Ler antes de mudar regra
 cmake -S . -B build
 cmake --build build -j
 ctest --test-dir build --output-on-failure
+./build/cli/gamerpg_cli                 # joga a arena no terminal
+./build/cli/gamerpg_cli --auto --seed 3 # assiste o jogador automático
+./build/cli/gamerpg_cli --bench 2000    # velocidade e taxa de vitória (use build Release)
 ```
 
 ## Regras de trabalho
@@ -20,3 +23,4 @@ ctest --test-dir build --output-on-failure
 - Código em inglês; textos do jogo em português.
 - Escopo atual: uma única história (campanha de 3 cenários), com as 12 classes do SRD.
 - Núcleo reutilizável: números de regra ficam em `data/rules/ruleset.json`; funções de regra recebem o `Ruleset`, nunca usam constantes fixas. Rodar os testes também com `-fsanitize=address,undefined`.
+- Desempenho importa (treino de IA): nada de `std::map`/`std::set` nem cópia de string em laços de simulação. Medir com `--bench` em Release antes e depois de mexer no combate.

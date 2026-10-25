@@ -23,7 +23,8 @@ json read_json_file(const std::filesystem::path& path) {
 }
 
 character::Ruleset ruleset_from_json(const json& j, const std::string& where) {
-    only_keys(j, {"attribute_score", "hand_size", "proficiency_by_level", "skills", "conditions", "cards"}, where);
+    only_keys(j, {"attribute_score", "hand_size", "proficiency_by_level", "skills", "conditions", "cards",
+                  "death_saves"}, where);
     character::Ruleset r;
     r.attribute_score = range_from_json(field(j, "attribute_score", where), where + ".attribute_score");
     r.hand_size = range_from_json(field(j, "hand_size", where), where + ".hand_size");
@@ -50,11 +51,25 @@ character::Ruleset ruleset_from_json(const json& j, const std::string& where) {
     ids.clear();
     for (const auto& c : get_array(j, "conditions", where)) {
         const std::string ctx = where + ".conditions";
-        only_keys(c, {"id", "name", "description"}, ctx);
+        only_keys(c, {"id", "name", "description", "effects"}, ctx);
         character::ConditionDef cond;
         cond.id = get_string(c, "id", ctx);
         cond.name_key = get_string(c, "name", ctx);
         cond.description_key = get_string_or(c, "description", ctx);
+        if (c.contains("effects")) {
+            const std::string ectx = ctx + " [" + cond.id + "].effects";
+            const auto& e = c["effects"];
+            only_keys(e, {"damage_taken_bonus", "damage_reduction", "skip_turn", "no_move", "attack_advantage",
+                          "attack_disadvantage"}, ectx);
+            auto& fx = cond.effects;
+            fx.damage_taken_bonus = get_int_or(e, "damage_taken_bonus", 0, ectx);
+            fx.damage_reduction = get_int_or(e, "damage_reduction", 0, ectx);
+            fx.skip_turn = get_bool_or(e, "skip_turn", false, ectx);
+            fx.no_move = get_bool_or(e, "no_move", false, ectx);
+            fx.attack_advantage = get_bool_or(e, "attack_advantage", false, ectx);
+            fx.attack_disadvantage = get_bool_or(e, "attack_disadvantage", false, ectx);
+            if (fx.damage_taken_bonus < 0 || fx.damage_reduction < 0) fail(ectx, "damage modifiers must not be negative");
+        }
         if (!ids.insert(cond.id).second) fail(ctx, "duplicate condition '" + cond.id + "'");
         r.conditions.push_back(std::move(cond));
     }
@@ -77,6 +92,18 @@ character::Ruleset ruleset_from_json(const json& j, const std::string& where) {
     if (cr.rest_min_discard < 1) fail(cctx, "'rest_min_discard' must be at least 1");
     if (!cr.initiative.contains(cr.long_rest_initiative)) {
         fail(cctx, "'long_rest_initiative' must be inside the initiative range");
+    }
+
+    if (j.contains("death_saves")) {
+        const std::string dctx = where + ".death_saves";
+        const auto& d = j["death_saves"];
+        only_keys(d, {"dc", "failures_to_die", "successes_to_stabilize"}, dctx);
+        r.death_saves.dc = get_int(d, "dc", dctx);
+        r.death_saves.failures_to_die = get_int(d, "failures_to_die", dctx);
+        r.death_saves.successes_to_stabilize = get_int(d, "successes_to_stabilize", dctx);
+        if (r.death_saves.failures_to_die < 1 || r.death_saves.successes_to_stabilize < 1) {
+            fail(dctx, "counts must be at least 1");
+        }
     }
     return r;
 }

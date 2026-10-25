@@ -57,6 +57,12 @@ inline int get_int_or(const json& j, const char* key, int fallback, const std::s
     return j.contains(key) ? get_int(j, key, where) : fallback;
 }
 
+inline bool get_bool(const json& j, const char* key, const std::string& where) {
+    const auto& v = field(j, key, where);
+    if (!v.is_boolean()) fail(where, quote_key(key) + " must be true or false");
+    return v.get<bool>();
+}
+
 inline bool get_bool_or(const json& j, const char* key, bool fallback, const std::string& where) {
     if (!j.contains(key)) return fallback;
     const auto& v = j[key];

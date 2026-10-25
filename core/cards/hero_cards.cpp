@@ -162,6 +162,15 @@ void HeroCards::finish_turn(const TurnPlay& play, const CardRegistry& registry) 
     selection_.reset();
 }
 
+void HeroCards::skip_turn() {
+    if (!selection_) throw std::logic_error("no selection this round");
+    if (!selection_->long_rest) {
+        discard_.push_back(selection_->lead);
+        discard_.push_back(selection_->other);
+    }
+    selection_.reset();
+}
+
 std::vector<std::string> HeroCards::legal_long_rest_losses() const {
     if (!selection_ || !selection_->long_rest) return {};
     return discard_;

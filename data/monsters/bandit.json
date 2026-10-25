@@ -1,0 +1,114 @@
+{
+  "id": "bandit",
+  "name": "monster.bandit.name",
+  "armor_class": 12,
+  "hit_points": 9,
+  "attack_bonus": 3,
+  "damage_bonus": 1,
+  "attributes": {
+    "str": 12,
+    "dex": 13,
+    "con": 12,
+    "int": 10,
+    "wis": 10,
+    "cha": 10
+  },
+  "deck": [
+    {
+      "id": "slash",
+      "name": "monster.bandit.card.slash.name",
+      "initiative": 40,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "rush",
+      "name": "monster.bandit.card.rush.name",
+      "initiative": 25,
+      "actions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "attack",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "guard",
+      "name": "monster.bandit.card.guard.name",
+      "initiative": 60,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1
+        },
+        {
+          "type": "attack",
+          "value": 2
+        },
+        {
+          "type": "condition",
+          "target": "self",
+          "conditions": [
+            {
+              "id": "protected",
+              "rounds": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dirty_trick",
+      "name": "monster.bandit.card.dirty_trick.name",
+      "initiative": 50,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "conditions": [
+            {
+              "id": "poisoned",
+              "rounds": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "heavy_swing",
+      "name": "monster.bandit.card.heavy_swing.name",
+      "initiative": 70,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1
+        },
+        {
+          "type": "attack",
+          "value": 4
+        }
+      ],
+      "reshuffle": true
+    }
+  ],
+  "visual": {
+    "color": "#9c6b3c",
+    "portrait": "monsters/bandit.png"
+  }
+}

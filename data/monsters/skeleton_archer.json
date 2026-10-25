@@ -1,0 +1,92 @@
+{
+  "id": "skeleton_archer",
+  "name": "monster.skeleton_archer.name",
+  "armor_class": 13,
+  "hit_points": 7,
+  "attack_bonus": 4,
+  "damage_bonus": 1,
+  "attributes": {
+    "str": 10,
+    "dex": 14,
+    "con": 15,
+    "int": 6,
+    "wis": 8,
+    "cha": 5
+  },
+  "immunities": [
+    "poisoned"
+  ],
+  "deck": [
+    {
+      "id": "volley",
+      "name": "monster.skeleton_archer.card.volley.name",
+      "initiative": 30,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "range": 4
+        }
+      ]
+    },
+    {
+      "id": "aimed_shot",
+      "name": "monster.skeleton_archer.card.aimed_shot.name",
+      "initiative": 55,
+      "actions": [
+        {
+          "type": "attack",
+          "value": 3,
+          "range": 5
+        }
+      ]
+    },
+    {
+      "id": "fall_back",
+      "name": "monster.skeleton_archer.card.fall_back.name",
+      "initiative": 20,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "range": 3
+        }
+      ]
+    },
+    {
+      "id": "pinning_shot",
+      "name": "monster.skeleton_archer.card.pinning_shot.name",
+      "initiative": 65,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "range": 4,
+          "conditions": [
+            {
+              "id": "immobilized",
+              "rounds": 1
+            }
+          ]
+        }
+      ],
+      "reshuffle": true
+    }
+  ],
+  "visual": {
+    "color": "#d8d2c4",
+    "portrait": "monsters/skeleton_archer.png"
+  }
+}

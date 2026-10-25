@@ -19,10 +19,17 @@ add_library(gamerpg_core STATIC
     cards/card_registry.cpp
     cards/deck.cpp
     cards/hero_cards.cpp
+    combat/hex.cpp
+    combat/combat.cpp
+    combat/combat_io.cpp
+    combat/auto_player.cpp
+    monsters/monster_def.cpp
     data/json_io.cpp
     data/class_registry.cpp
     data/text_table.cpp
     data/card_io.cpp
+    data/content.cpp
+    data/default_hero.cpp
 )
 add_library(gamerpg::core ALIAS gamerpg_core)
 

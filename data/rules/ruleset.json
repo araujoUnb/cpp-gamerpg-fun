@@ -23,13 +23,17 @@
     { "id": "stealth",         "attribute": "dex", "name": "skill.stealth.name" },
     { "id": "survival",        "attribute": "wis", "name": "skill.survival.name" }
   ],
-  // O efeito de cada condição no combate é definido na etapa 4.
   "conditions": [
-    { "id": "poisoned",     "name": "condition.poisoned.name",     "description": "condition.poisoned.description" },
-    { "id": "stunned",      "name": "condition.stunned.name",      "description": "condition.stunned.description" },
-    { "id": "immobilized",  "name": "condition.immobilized.name",  "description": "condition.immobilized.description" },
-    { "id": "strengthened", "name": "condition.strengthened.name", "description": "condition.strengthened.description" },
-    { "id": "protected",    "name": "condition.protected.name",    "description": "condition.protected.description" }
+    { "id": "poisoned",     "name": "condition.poisoned.name",     "description": "condition.poisoned.description",
+      "effects": { "damage_taken_bonus": 1 } },
+    { "id": "stunned",      "name": "condition.stunned.name",      "description": "condition.stunned.description",
+      "effects": { "skip_turn": true } },
+    { "id": "immobilized",  "name": "condition.immobilized.name",  "description": "condition.immobilized.description",
+      "effects": { "no_move": true } },
+    { "id": "strengthened", "name": "condition.strengthened.name", "description": "condition.strengthened.description",
+      "effects": { "attack_advantage": true } },
+    { "id": "protected",    "name": "condition.protected.name",    "description": "condition.protected.description",
+      "effects": { "damage_reduction": 1 } }
   ],
   "cards": {
     "initiative": { "min": 1, "max": 99 },
@@ -38,5 +42,6 @@
     "rest_min_discard": 2,
     "long_rest_heal": 2,
     "long_rest_initiative": 99
-  }
+  },
+  "death_saves": { "dc": 10, "failures_to_die": 3, "successes_to_stabilize": 3 }
 }

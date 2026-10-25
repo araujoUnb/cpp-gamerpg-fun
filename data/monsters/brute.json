@@ -1,0 +1,93 @@
+{
+  "id": "brute",
+  "name": "monster.brute.name",
+  "armor_class": 11,
+  "hit_points": 18,
+  "attack_bonus": 5,
+  "damage_bonus": 3,
+  "attributes": {
+    "str": 18,
+    "dex": 8,
+    "con": 16,
+    "int": 6,
+    "wis": 8,
+    "cha": 7
+  },
+  "deck": [
+    {
+      "id": "smash",
+      "name": "monster.brute.card.smash.name",
+      "initiative": 75,
+      "actions": [
+        {
+          "type": "move",
+          "value": 1
+        },
+        {
+          "type": "attack",
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "stomp",
+      "name": "monster.brute.card.stomp.name",
+      "initiative": 60,
+      "actions": [
+        {
+          "type": "move",
+          "value": 2
+        },
+        {
+          "type": "attack",
+          "value": 2,
+          "conditions": [
+            {
+              "id": "stunned",
+              "rounds": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "charge",
+      "name": "monster.brute.card.charge.name",
+      "initiative": 45,
+      "actions": [
+        {
+          "type": "move",
+          "value": 3
+        },
+        {
+          "type": "attack",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "rage",
+      "name": "monster.brute.card.rage.name",
+      "initiative": 80,
+      "actions": [
+        {
+          "type": "heal",
+          "value": 3
+        },
+        {
+          "type": "move",
+          "value": 1
+        },
+        {
+          "type": "attack",
+          "value": 3
+        }
+      ],
+      "reshuffle": true
+    }
+  ],
+  "visual": {
+    "color": "#6e7f3a",
+    "portrait": "monsters/brute.png"
+  }
+}

@@ -101,6 +101,10 @@ public:
     bool can_short_rest(const character::CardRules& rules) const;
     std::string short_rest(dice::Rng& rng, const character::CardRules& rules);
 
+    // The hero loses this turn (stunned, or knocked out before acting):
+    // selected cards go to the discard pile; a chosen rest is cancelled.
+    void skip_turn();
+
     bool is_exhausted(const character::CardRules& rules) const { return status(rules) == RoundStatus::Exhausted; }
 
 private:

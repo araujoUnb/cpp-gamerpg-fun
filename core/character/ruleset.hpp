@@ -21,10 +21,27 @@ struct IntRange {
 
 // Status effects that cards and monsters can apply. Their effect on combat is
 // declared in data and interpreted by the combat module.
+struct ConditionEffects {
+    int damage_taken_bonus = 0;  // added to each attack's damage against the creature
+    int damage_reduction = 0;    // subtracted from each attack's damage against the creature
+    bool skip_turn = false;
+    bool no_move = false;
+    bool attack_advantage = false;
+    bool attack_disadvantage = false;
+};
+
 struct ConditionDef {
     std::string id;
     std::string name_key;
     std::string description_key;
+    ConditionEffects effects;
+};
+
+// 5e-style death saving throws for heroes at 0 HP, rolled at the end of each round.
+struct DeathSaveRules {
+    int dc = 10;
+    int failures_to_die = 3;
+    int successes_to_stabilize = 3;
 };
 
 struct CardRules {
@@ -48,6 +65,7 @@ struct Ruleset {
     std::vector<SkillDef> skills;
     std::vector<ConditionDef> conditions;
     CardRules cards;
+    DeathSaveRules death_saves;
 
     int max_level() const { return static_cast<int>(proficiency_by_level.size()); }
     // Throws std::invalid_argument for a level outside [1, max_level].
