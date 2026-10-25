@@ -6,10 +6,16 @@
 #include "data/content.hpp"
 #include "data/data_error.hpp"
 #include "data/default_hero.hpp"
+#include "data/json_io.hpp"
+#include "narrator/bank.hpp"
+#include "narrator/narrator.hpp"
+#include "narrator/situation.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
+#include <memory>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -33,12 +39,19 @@ struct Options {
     std::string scenario = "arena";
     std::string difficulty = "normal";
     std::vector<std::string> classes{"fighter", "wizard"};
+    std::string narrator_url;    // llama-server, e.g. http://127.0.0.1:8080, or "banco" for the phrase bank
+    std::string narration_file;  // written with --narrador, replayed without it
 };
 
 const char* const kHeroNames[] = {"Aria", "Bento", "Cora", "Davi"};
 
 void usage() {
-    std::cout << "uso: gamerpg_cli [--seed N] [--auto] [--bench N] [--classes fighter,wizard] [--scenario arena] [--dificuldade easy|normal|hard|standard] [--data DIR]\n";
+    std::cout << "uso: gamerpg_cli [--seed N] [--auto] [--bench N] [--classes fighter,wizard] [--scenario arena] [--dificuldade easy|normal|hard|standard] [--data DIR]\n"
+                 "                   [--narrador URL] [--narracao ARQUIVO]\n"
+                 "  --narrador URL      narra o combate com o modelo servido em URL (llama-server);\n"
+                 "                      o banco de frases cobre as rodadas que o modelo não narrar\n"
+                 "  --narrador banco    narra com o banco de frases, sem modelo (instantâneo)\n"
+                 "  --narracao ARQUIVO  com --narrador grava a narração; sem ele, repete a gravada\n";
 }
 
 std::optional<Options> parse_args(int argc, char** argv) {
@@ -73,6 +86,14 @@ std::optional<Options> parse_args(int argc, char** argv) {
             const auto v = next();
             if (!v) return std::nullopt;
             o.difficulty = *v;
+        } else if (a == "--narrador") {
+            const auto v = next();
+            if (!v) return std::nullopt;
+            o.narrator_url = *v;
+        } else if (a == "--narracao") {
+            const auto v = next();
+            if (!v) return std::nullopt;
+            o.narration_file = *v;
         } else if (a == "--data") {
             const auto v = next();
             if (!v) return std::nullopt;
@@ -400,6 +421,11 @@ std::optional<std::size_t> ask_selection(const Ui& ui, const Decision& d) {
     return seconds[*second];
 }
 
+void show_narration(const narrator::Narration& n) {
+    std::cout << "\n  » " << n.text << '\n';
+    for (const auto& l : n.lines) std::cout << "    — " << l.speaker << ": " << l.text << '\n';
+}
+
 void show_hand(const Ui& ui, const Combat& c, const std::string& hero_id) {
     for (const auto& h : c.heroes()) {
         if (h.sheet.id != hero_id) continue;
@@ -458,13 +484,103 @@ int main(int argc, char** argv) {
         std::cout << content.text.get(combat.scenario().name_key) << "  (semente " << opts->seed << ", "
                   << (combat.difficulty().name_key.empty() ? "padrão" : content.text.get(combat.difficulty().name_key)) << ")\n";
 
+        // Narrator: asks the model for each round in the background, with the
+        // phrase bank telling what it misses; or the bank alone; or replays a
+        // recorded narration.
+        std::unique_ptr<narrator::Narrator> teller;
+        std::optional<narrator::PhraseBank> bank;
+        std::optional<narrator::BankNarrator> bank_teller;
+        std::chrono::milliseconds narration_wait{0};
+        std::vector<narrator::Narration> told;      // shown, saved with --narracao
+        std::vector<narrator::Narration> recorded;  // replayed
+        std::size_t next_recorded = 0;
+        if (!opts->narrator_url.empty()) {
+            bank = narrator::load_bank(std::filesystem::path(opts->data_dir) / "narrator" / "banco.json");
+            bank_teller.emplace(*bank, opts->seed);
+        }
+        if (!opts->narrator_url.empty() && opts->narrator_url != "banco") {
+            auto cfg = narrator::load_config(opts->data_dir);
+            narration_wait = std::chrono::milliseconds(cfg.timeout_ms);
+            teller = std::make_unique<narrator::Narrator>(
+                cfg, narrator::make_http_transport(opts->narrator_url, narration_wait),
+                narrator::load_warnings(content.text));
+        } else if (!opts->narration_file.empty()) {
+            recorded = narrator::log_from_json(data::read_json_file(opts->narration_file));
+        }
+
         std::size_t shown = 0;
+        auto tell = [&](narrator::Narration n) {
+            n.after_event = shown;
+            show_narration(n);
+            told.push_back(std::move(n));
+        };
+        // The moment of the latest request to the model, while still untold.
+        struct Untold {
+            bool opening;
+            std::size_t first_event, end_event;
+        };
+        std::optional<Untold> untold;
+        // `last_chance`: the model's narration is no longer awaited, so the bank tells the moment.
+        auto take_narration = [&](std::chrono::milliseconds wait, bool last_chance) {
+            if (!teller) return;
+            auto n = teller->receive(wait);
+            if (!n && !last_chance) return;  // may still be on its way
+            if (untold && narrator::needs_cover(n)) {
+                n = narrator::cover(std::move(n), untold->opening ? bank_teller->opening(combat)
+                                                                  : bank_teller->round(combat, untold->first_event, untold->end_event));
+            }
+            untold.reset();
+            if (n) tell(std::move(*n));
+        };
+        auto replay_narration = [&] {
+            for (; next_recorded < recorded.size() && recorded[next_recorded].after_event <= shown; ++next_recorded) {
+                show_narration(recorded[next_recorded]);
+            }
+        };
+        auto save_narration = [&] {
+            if ((!teller && !bank_teller) || opts->narration_file.empty()) return;
+            std::ofstream(opts->narration_file) << narrator::to_json(told).dump(2) << '\n';
+        };
+
+        if (teller) {
+            teller->request(narrator::opening_situation(combat));
+            untold = Untold{true, 0, 0};
+            take_narration(narration_wait, true);
+        } else if (bank_teller) {
+            if (auto n = bank_teller->opening(combat)) tell(std::move(*n));
+        }
+        replay_narration();
+
+        std::size_t round_first = 0;
+        bool narrated_end = false;
         auto flush_events = [&] {
-            for (; shown < combat.events().size(); ++shown) ui.print_event(combat.events()[shown]);
+            for (; shown < combat.events().size();) {
+                const auto& e = combat.events()[shown];
+                ui.print_event(e);
+                ++shown;
+                replay_narration();
+                const bool end = e.kind == Event::Kind::Victory || e.kind == Event::Kind::Defeat;
+                if ((!teller && !bank_teller) || narrated_end || (!end && e.kind != Event::Kind::RoundEnded)) continue;
+                if (!teller) {
+                    if (auto n = bank_teller->round(combat, round_first, shown)) tell(std::move(*n));
+                    round_first = shown;
+                    narrated_end = end;
+                    continue;
+                }
+                // A newer request drops the older one, so its round is told now.
+                take_narration(std::chrono::milliseconds(0), true);
+                teller->request(narrator::round_situation(combat, round_first, shown));
+                untold = Untold{false, round_first, shown};
+                round_first = shown;
+                narrated_end = end;
+                // Watching the auto player: wait for the narration; playing: it shows up when ready.
+                if (opts->automatic) take_narration(narration_wait, true);
+            }
         };
 
         while (!combat.finished()) {
             flush_events();
+            take_narration(std::chrono::milliseconds(0), false);
             const auto& d = *combat.pending();
             if (opts->automatic) {
                 const auto i = autoplayer.choose(combat, d);
@@ -490,12 +606,15 @@ int main(int argc, char** argv) {
                 choice = ask(labels.size());
             }
             if (!choice) {
+                save_narration();
                 std::cout << "\nAté a próxima!\n";
                 return 0;
             }
             combat.decide(*choice);
         }
         flush_events();
+        take_narration(narration_wait, true);
+        save_narration();
         ui.draw_map();
         ui.draw_status();
         std::cout << "Rodadas: " << combat.round() << '\n';

@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(GAMERPG_BUILD_TESTS "Build unit tests" ON)
 option(GAMERPG_BUILD_CLI "Build the terminal runner" ON)
+option(GAMERPG_BUILD_NARRATOR "Build the story-telling master (talks to a local language model)" ON)
 option(GAMERPG_BUILD_TOOLS "Build offline tools (game master training)" ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -26,7 +27,14 @@ endif()
 
 add_subdirectory(core)
 
+if(GAMERPG_BUILD_NARRATOR)
+    add_subdirectory(narrator)
+endif()
+
 if(GAMERPG_BUILD_CLI)
+    if(NOT GAMERPG_BUILD_NARRATOR)
+        message(FATAL_ERROR "the terminal runner needs GAMERPG_BUILD_NARRATOR")
+    endif()
     add_subdirectory(cli)
 endif()
 

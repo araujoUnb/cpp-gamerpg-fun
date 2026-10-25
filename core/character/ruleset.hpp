@@ -28,6 +28,11 @@ struct ConditionEffects {
     bool no_move = false;
     bool attack_advantage = false;
     bool attack_disadvantage = false;
+
+    // Helps whoever has it (narrated as a blessing, not a wound).
+    bool beneficial() const {
+        return damage_reduction > 0 || attack_advantage;
+    }
 };
 
 struct ConditionDef {

@@ -116,5 +116,278 @@
         "tipo": "abrir_loja"
       }
     ]
+  },
+  {
+    "acoes_permitidas": [],
+    "cenario": "Arena de Treino",
+    "contexto": "Rodada 2 do combate.",
+    "eventos": [
+      "Bandido se prepara: 'Avanço'",
+      "Esqueleto Arqueiro se prepara: 'Flecha Prendedora'",
+      "Lobo se prepara: 'Mordida'",
+      "Bento usa 'Setas Cintilantes'",
+      "Bento ataca Lobo #1: rolou 15 contra CA 13, acerta",
+      "Lobo #1 sofre 4 de dano e fica com 4 PV",
+      "Bento ataca Bandido #1: rolou 21 contra CA 12, acerta",
+      "Bandido #1 sofre 4 de dano e fica com 5 PV",
+      "Bento usa 'Égide Arcana'",
+      "Bento fica Protegido",
+      "Aria usa 'Investida'",
+      "Aria usa 'Varrida'",
+      "Aria ataca Lobo #1: rolou 21 contra CA 13, acerta",
+      "Lobo #1 sofre 4 de dano e fica com 0 PV",
+      "Lobo #1 é derrotado",
+      "Aria não está mais Protegido",
+      "Bandido #1 ataca Bento: rolou 5 contra CA 11, erra",
+      "Esqueleto Arqueiro #1 ataca Bento: rolou 6 contra CA 11, erra"
+    ],
+    "grupo": [
+      {
+        "classe": "Guerreiro",
+        "nome": "Aria",
+        "pv": "12/12"
+      },
+      {
+        "classe": "Mago",
+        "condicoes": [
+          "Protegido"
+        ],
+        "nome": "Bento",
+        "pv": "5/8"
+      }
+    ],
+    "id": "rodada_do_jogo",
+    "inimigos": [
+      {
+        "nome": "Bandido #1",
+        "pv": "5/9"
+      },
+      {
+        "nome": "Esqueleto Arqueiro #1",
+        "pv": "7/7"
+      }
+    ],
+    "jogador": "",
+    "momento": "combate",
+    "narracoes_anteriores": [
+      "Na areia da arena, os bandidos se espalham em leque enquanto o arqueiro esquelético range os ossos no alto da arquibancada. Aria ergue o escudo; Bento sussurra as primeiras palavras de um feitiço."
+    ]
+  },
+  {
+    "id": "taverna",
+    "momento": "cena",
+    "cenario": "Aldeia de Vau-Claro",
+    "contexto": "Noite na taverna do Rui. O grupo voltou das ruínas e quer saber quem ajuda os bandidos da estrada.",
+    "grupo": [
+      {
+        "nome": "Aria",
+        "classe": "Guerreira",
+        "pv": "12/12"
+      },
+      {
+        "nome": "Bento",
+        "classe": "Mago",
+        "pv": "8/8"
+      }
+    ],
+    "npcs": [
+      {
+        "nome": "Marta",
+        "papel": "ferreira da aldeia",
+        "personalidade": "seca, desconfiada, leal a quem prova valor",
+        "quer": "ver os bandidos que levaram o filho pagarem",
+        "atitude": 1,
+        "lembrancas": [
+          "o grupo devolveu o medalhão do filho dela"
+        ]
+      },
+      {
+        "nome": "Rui",
+        "papel": "taverneiro",
+        "personalidade": "simpático demais, fala muito, foge de perguntas diretas",
+        "quer": "que o grupo vá embora logo da aldeia",
+        "atitude": 0,
+        "esconde": "algo sobre os bandidos que pode custar caro a ele"
+      },
+      {
+        "nome": "Isadora",
+        "papel": "capitã da guarda",
+        "personalidade": "rígida, orgulhosa, não gosta de forasteiros",
+        "quer": "prender o chefe dos bandidos sem ajuda de estranhos",
+        "atitude": -1,
+        "esconde": "algo pessoal sobre o chefe dos bandidos"
+      }
+    ],
+    "eventos": [],
+    "jogador": "Aria bate na mesa e pergunta em voz alta quem nesta aldeia anda ajudando os bandidos.",
+    "acoes_permitidas": [
+      {
+        "tipo": "teste",
+        "atributos": [
+          "sab",
+          "car"
+        ],
+        "cd": [
+          10,
+          15
+        ]
+      },
+      {
+        "tipo": "marcar_flag",
+        "flags": [
+          "rui_suspeito",
+          "isadora_hostil"
+        ]
+      }
+    ],
+    "_avaliacao": {
+      "segredos": [
+        {
+          "npc": "Rui",
+          "palavras": [
+            "informante",
+            "vende informa",
+            "passa informa",
+            "conta aos bandidos",
+            "trabalha para os bandidos"
+          ]
+        },
+        {
+          "npc": "Isadora",
+          "palavras": [
+            "irmão",
+            "irmao"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "interrogatorio",
+    "momento": "cena",
+    "cenario": "Acampamento na estrada",
+    "contexto": "O grupo capturou um bandido depois da luta. Um mercenário que acompanha o grupo assiste ao interrogatório.",
+    "grupo": [
+      {
+        "nome": "Aria",
+        "classe": "Guerreira",
+        "pv": "12/12"
+      },
+      {
+        "nome": "Bento",
+        "classe": "Mago",
+        "pv": "8/8"
+      }
+    ],
+    "npcs": [
+      {
+        "nome": "Vesgo",
+        "papel": "bandido capturado",
+        "personalidade": "debochado, covarde quando ameaçado de verdade",
+        "quer": "fugir e avisar o bando",
+        "atitude": -2,
+        "esconde": "onde fica o esconderijo do bando"
+      },
+      {
+        "nome": "Gonçalo",
+        "papel": "mercenário que quer entrar no grupo",
+        "personalidade": "calmo, prático, cobra por tudo",
+        "quer": "30 moedas de ouro para lutar ao lado do grupo",
+        "atitude": 0,
+        "esconde": "por que saiu da guarda"
+      }
+    ],
+    "eventos": [
+      "O grupo venceu os bandidos da estrada e capturou um deles"
+    ],
+    "jogador": "Bento encosta o cajado no peito do bandido e ameaça transformá-lo em sapo se ele não disser onde fica o esconderijo.",
+    "acoes_permitidas": [
+      {
+        "tipo": "teste",
+        "atributos": [
+          "car",
+          "for"
+        ],
+        "cd": [
+          10,
+          15
+        ]
+      },
+      {
+        "tipo": "marcar_flag",
+        "flags": [
+          "esconderijo_descoberto",
+          "goncalo_contratado"
+        ]
+      }
+    ],
+    "_avaliacao": {
+      "segredos": [
+        {
+          "npc": "Vesgo",
+          "palavras": [
+            "moinho",
+            "caverna"
+          ]
+        },
+        {
+          "npc": "Gonçalo",
+          "palavras": [
+            "expulso",
+            "roubo",
+            "roubou",
+            "ladrão"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "reencontro",
+    "momento": "cena",
+    "cenario": "Aldeia de Vau-Claro",
+    "contexto": "Semanas depois, o grupo volta à forja de Marta.",
+    "grupo": [
+      {
+        "nome": "Aria",
+        "classe": "Guerreira",
+        "pv": "12/12"
+      },
+      {
+        "nome": "Bento",
+        "classe": "Mago",
+        "pv": "8/8"
+      }
+    ],
+    "npcs": [
+      {
+        "nome": "Marta",
+        "papel": "ferreira da aldeia",
+        "personalidade": "seca, desconfiada, leal a quem prova valor",
+        "quer": "ver os bandidos que levaram o filho pagarem",
+        "atitude": 2,
+        "lembrancas": [
+          "o grupo devolveu o medalhão do filho dela",
+          "Aria prometeu caçar o chefe dos bandidos",
+          "o grupo destruiu o esconderijo da caverna do moinho"
+        ]
+      }
+    ],
+    "eventos": [],
+    "jogador": "Bento pergunta se Marta ainda se lembra deles.",
+    "acoes_permitidas": [
+      {
+        "tipo": "dar_item",
+        "itens": [
+          "lanca_de_marta"
+        ]
+      },
+      {
+        "tipo": "abrir_loja"
+      }
+    ],
+    "_avaliacao": {
+      "segredos": []
+    }
   }
 ]

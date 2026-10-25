@@ -1,0 +1,186 @@
+{
+  "sistema": "Você escreve frases de narração para um RPG de tabuleiro tático, em português do Brasil. As frases são guardadas e sorteadas durante o jogo, sempre que o evento acontece, para qualquer personagem. Por isso cada frase:\n- descreve só o evento pedido, com imagens fortes e concretas (som, peso, movimento), em uma frase curta;\n- usa os marcadores pedidos exatamente como estão escritos, com as chaves, no lugar dos nomes;\n- não tem números, nomes próprios, armas ou magias específicas: o mesmo texto serve para um guerreiro com espada, um mago com raio ou um lobo com dentes;\n- não usa adjetivos nem particípios com gênero sobre os marcadores (nada de 'ferido', 'caída', 'derrotado'); prefira verbos ('{alvo} cambaleia', 'a força abandona {alvo}');\n- não põe artigo antes dos marcadores (nada de 'o {alvo}', 'do {ator}') e não usa pronomes com gênero para eles (ele, ela, o, a): repita o marcador ou use 'lhe';\n- é diferente das outras no começo, no verbo e na imagem.",
+  "pedido": "Escreva {n} frases diferentes para o evento: {descricao}\nMarcadores obrigatórios em toda frase: {marcadores}.\nFrases já escritas, para não repetir: {feitas}",
+  "frases_por_evento": 24,
+  "frases_por_pedido": 8,
+  "eventos_por_rodada": 3,
+  "eventos": {
+    "abertura": {
+      "descricao": "o começo de um combate no lugar {cenario}, quando os heróis encaram os inimigos",
+      "marcadores": [
+        "{cenario}"
+      ]
+    },
+    "attack_rolled.hit": {
+      "descricao": "{ator} ataca {alvo} e acerta",
+      "marcadores": [
+        "{ator}",
+        "{alvo}"
+      ]
+    },
+    "attack_rolled.miss": {
+      "descricao": "{ator} ataca {alvo} e erra",
+      "marcadores": [
+        "{ator}",
+        "{alvo}"
+      ]
+    },
+    "attack_rolled.critical": {
+      "descricao": "{ator} acerta {alvo} com um golpe perfeito e devastador",
+      "marcadores": [
+        "{ator}",
+        "{alvo}"
+      ]
+    },
+    "attack_rolled.fumble": {
+      "descricao": "{ator} tenta atacar {alvo} e falha de forma desastrada",
+      "marcadores": [
+        "{ator}",
+        "{alvo}"
+      ]
+    },
+    "monster_died": {
+      "descricao": "o inimigo {alvo} é derrotado e cai para não levantar mais",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "hero_downed": {
+      "descricao": "o herói {alvo} cai no chão, inconsciente, entre a vida e a morte",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "hero_died": {
+      "descricao": "o herói {alvo} morre",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "hero_revived": {
+      "descricao": "o herói {alvo}, que estava caído, se levanta e volta à luta",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "hero_stabilized": {
+      "descricao": "o herói {alvo}, caído, para de piorar e fica estável, ainda inconsciente",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "hero_exhausted": {
+      "descricao": "o herói {alvo} não tem mais forças e deixa a luta",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "death_save.success": {
+      "descricao": "o herói {alvo}, caído, resiste e se agarra à vida",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "death_save.failure": {
+      "descricao": "o herói {alvo}, caído, piora e se aproxima da morte",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "healed": {
+      "descricao": "{ator} cura os ferimentos de {alvo}",
+      "marcadores": [
+        "{ator}",
+        "{alvo}"
+      ]
+    },
+    "healed.self": {
+      "descricao": "{alvo} cura os próprios ferimentos",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "condition_applied": {
+      "descricao": "{alvo} passa a sofrer um efeito ruim chamado {condicao} (um adjetivo, use 'fica {condicao}' ou 'está {condicao}')",
+      "marcadores": [
+        "{alvo}",
+        "{condicao}"
+      ]
+    },
+    "condition_applied.beneficial": {
+      "descricao": "{alvo} recebe um efeito bom chamado {condicao} (um adjetivo, use 'fica {condicao}' ou 'está {condicao}')",
+      "marcadores": [
+        "{alvo}",
+        "{condicao}"
+      ]
+    },
+    "condition_applied.poisoned": {
+      "descricao": "o veneno entra no corpo de {alvo}",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "condition_applied.stunned": {
+      "descricao": "{alvo} perde os sentidos por um instante e não age na vez",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "condition_applied.immobilized": {
+      "descricao": "{alvo} fica preso no lugar, sem conseguir se mover",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "condition_applied.strengthened": {
+      "descricao": "{alvo} recebe uma força nova que torna seus ataques mais certeiros",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "condition_applied.protected": {
+      "descricao": "{alvo} recebe uma proteção que amortece os golpes",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "trap_triggered": {
+      "descricao": "{alvo} pisa numa armadilha escondida",
+      "marcadores": [
+        "{alvo}"
+      ]
+    },
+    "turn_skipped": {
+      "descricao": "{ator} perde a vez, sem conseguir agir",
+      "marcadores": [
+        "{ator}"
+      ]
+    },
+    "long_rested": {
+      "descricao": "{ator} recua da luta por um momento para recuperar o fôlego",
+      "marcadores": [
+        "{ator}"
+      ]
+    },
+    "door_opened": {
+      "descricao": "{ator} abre uma porta",
+      "marcadores": [
+        "{ator}"
+      ]
+    },
+    "moved.forced": {
+      "descricao": "{ator} é empurrado para trás à força",
+      "marcadores": [
+        "{ator}"
+      ]
+    },
+    "victory": {
+      "descricao": "os heróis vencem o combate; o último inimigo caiu",
+      "marcadores": []
+    },
+    "defeat": {
+      "descricao": "os heróis são derrotados; ninguém do grupo está de pé",
+      "marcadores": []
+    }
+  }
+}

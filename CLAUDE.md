@@ -12,6 +12,8 @@ ctest --test-dir build --output-on-failure
 ./build/cli/gamerpg_cli --auto --seed 3 # assiste o jogador automático
 ./build/cli/gamerpg_cli --bench 2000    # velocidade e taxa de vitória (use build Release)
 ./build/cli/gamerpg_cli --dificuldade hard # easy, normal (padrão), hard; standard = mestre clássico sem ajuste
+./build/cli/gamerpg_cli --auto --narrador http://127.0.0.1:8080 --narracao narr.json # narra com o modelo (túnel ssh até o llama-server no lab10)
+./build/cli/gamerpg_cli --auto --narracao narr.json # repete a narração gravada, sem o modelo
 ./build/tools/gamerpg_gm_train --help   # treina os pesos do mestre e calibra as dificuldades (rodar no lab10, ver treino/)
 ```
 

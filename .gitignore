@@ -4,3 +4,4 @@ build-*/
 compile_commands.json
 treino/*.log
 treino/tactical_*.json
+treino/*.jsonl

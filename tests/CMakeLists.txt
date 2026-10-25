@@ -23,6 +23,10 @@ add_executable(gamerpg_tests
     combat/test_combat.cpp
 )
 target_link_libraries(gamerpg_tests PRIVATE gamerpg::core doctest::doctest gamerpg_warnings)
+if(GAMERPG_BUILD_NARRATOR)
+    target_sources(gamerpg_tests PRIVATE narrator/test_narrator.cpp)
+    target_link_libraries(gamerpg_tests PRIVATE gamerpg::narrator)
+endif()
 target_compile_definitions(gamerpg_tests PRIVATE GAMERPG_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
 
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
