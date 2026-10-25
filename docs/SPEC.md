@@ -12,16 +12,23 @@ Jogo de RPG de tabuleiro digital, para um jogador controlando um grupo de herói
 2. **Combate por cartas com duas metades**, inspirado no estilo de jogos como Gloomhaven. As cartas do personagem são ao mesmo tempo ações e recurso de resistência.
 3. **Histórias ramificadas** escritas fora do código, com escolhas, testes de atributo e consequências.
 
-Não usar nomes, textos, arte, classes ou monstros protegidos de Gloomhaven ou de D&D. Somente as mecânicas gerais servem de inspiração. Regras do D&D podem vir do SRD 5.x, publicado pela Wizards of the Coast sob licença Creative Commons CC-BY-4.0, com o crédito exigido incluído na tela de créditos e em `LICENSES/SRD.md`.
+Não usar nomes, textos, arte, classes ou monstros protegidos de Gloomhaven ou de D&D. Somente as mecânicas gerais servem de inspiração. A exceção é o que está no SRD: as 12 classes básicas, perícias, atributos e tabelas de progressão do SRD podem ser usados. Subclasses, monstros e textos fora do SRD continuam proibidos, e as cartas são sempre criação original. Regras do D&D podem vir do SRD 5.x, publicado pela Wizards of the Coast sob licença Creative Commons CC-BY-4.0, com o crédito exigido incluído na tela de créditos e em `LICENSES/SRD.md`.
 
 ## Stack
 
 - C++20, CMake, build multiplataforma (Linux, Windows, macOS)
 - **Núcleo de regras sem dependência gráfica**, em biblioteca estática `core/`. Tudo que é regra mora aqui e é testável sem abrir janela.
-- **Frontend inicial em raylib**, em `app/`. O núcleo não pode depender do frontend, para permitir migrar depois para Godot via GDExtension.
+- **Núcleo reutilizável.** O núcleo deve servir para outros cenários e outros RPGs. Os números de regra (faixa de atributos, nível máximo, tabela de proficiência, tamanho de mão, perícias) ficam em `data/rules/ruleset.json`, não no código. Entradas inválidas geram erro claro, com o arquivo e o campo, e nunca comportamento indefinido.
+- **Frontend em Godot 4**, em `godot/`, ligado ao núcleo via GDExtension (godot-cpp). A interface, as animações e os efeitos ficam em GDScript e em cenas do Godot. As regras ficam só no C++.
+- **Ponte GDExtension** em `bindings/`: uma camada fina que expõe o núcleo ao Godot. Ela não contém regras.
+- O núcleo não pode depender do Godot nem da ponte. Ele continua compilando e passando nos testes sozinho, sem o Godot instalado.
 - Dados do jogo em JSON (nlohmann/json): classes, cartas, monstros, cenários
 - Histórias em ink, com o runtime inkcpp, em fase posterior
 - Testes com doctest
+
+### Direção visual
+
+O visual do jogo é prioridade: deve ser bonito, não apenas funcional. Mão de cartas com movimento (inclinar ao passar o mouse, arrastar para jogar), dados animados, números de dano flutuantes, partículas nas magias, iluminação 2D no tabuleiro e uma interface com tema próprio e consistente. A cor e o retrato de cada classe vêm dos dados (`visual` no JSON da classe).
 - Dependências via CMake FetchContent
 
 ## Estrutura de pastas
@@ -36,7 +43,8 @@ core/
   scenario/    mapa, objetivos, gatilhos
   campaign/    progresso entre cenários, recompensas, flags de história
   data/        carregamento e validação dos JSON
-app/           frontend raylib
+bindings/      GDExtension: expõe o núcleo ao Godot, sem regras
+godot/         projeto Godot: cenas, GDScript, temas, shaders, arte
 data/          JSON de conteúdo
 stories/       arquivos .ink
 tests/
@@ -46,16 +54,19 @@ tests/
 
 ### Ficha
 
-- Atributos: FOR, DES, CON, INT, SAB, CAR, valores de 8 a 20
+- Atributos: FOR, DES, CON, INT, SAB, CAR, valores de 8 a 20 (definidos no ruleset)
 - Modificador = (valor - 10) / 2, arredondando para baixo
-- Bônus de proficiência por nível, como no D&D 5e
-- Pontos de vida = valor base da classe + modificador de CON por nível
+- Bônus de proficiência por nível, como no D&D 5e, em tabela no ruleset
+- Pontos de vida máximos = base da classe + PV por nível × (nível − 1) + modificador de CON × nível, nunca abaixo do nível. Com os valores do 5e, a base é o dado de vida cheio e o PV por nível é a média do dado.
+- Classe de Armadura = base + mod. de DES (com limite opcional) + mod. de um atributo extra opcional, o que cobre armaduras e a defesa sem armadura de Bárbaro e Monge
+- Testes de resistência: a classe define dois atributos proficientes
+- 18 perícias do SRD. A classe define quantas o jogador escolhe e de qual lista.
 - Nível máximo por campanha: 9
 - Cada nível libera novas cartas da classe, e o jogador escolhe quais entram no baralho
 
 ### Testes
 
-- Rolagem: d20 + modificador do atributo + proficiência, se aplicável
+- Rolagem: d20 + modificador do atributo + proficiência, se aplicável. Teste de atributo puro não soma proficiência; teste de resistência e perícia somam quando o herói é proficiente.
 - Sucesso se o total for maior ou igual à CD ou à Classe de Armadura do alvo
 - Vantagem: rolar dois d20 e ficar com o maior. Desvantagem: ficar com o menor. As duas juntas se anulam.
 - 20 natural é crítico e dobra os dados de dano. 1 natural é falha automática.
@@ -119,7 +130,7 @@ Começar com poucas: envenenado, atordoado, imobilizado, fortalecido, protegido.
 3. **Cartas.** Mão, descarte, perdidas, escolha de duas cartas, descansos, exaustão
 4. **Combate em modo texto.** Um cenário pequeno rodando no terminal com dois heróis e três monstros, para validar as regras antes de qualquer gráfico
 5. **Tabuleiro hexagonal.** Movimento, alcance, linha de visão, A*
-6. **Frontend raylib.** Desenhar a grade, peças, mão de cartas, rolagens animadas
+6. **Frontend Godot.** Ponte GDExtension, tabuleiro hexagonal, peças, mão de cartas com animação, rolagens de dado animadas, efeitos de partícula e interface com tema próprio
 7. **Campanha.** Encadear cenários, progressão de nível entre eles
 8. **Histórias em ink.** Integração do inkcpp e testes de atributo vindos da história
 
@@ -127,7 +138,7 @@ Não pular para o frontend antes da etapa 4 funcionar no terminal.
 
 ## Conteúdo inicial
 
-- 4 classes originais: uma de linha de frente, uma ágil, uma arcana e uma de suporte, com 12 a 15 cartas cada até o nível 3
+- As 12 classes do SRD: Bárbaro, Bardo, Clérigo, Druida, Guerreiro, Monge, Paladino, Patrulheiro, Ladino, Feiticeiro, Bruxo e Mago. Cada uma com 12 a 15 cartas originais até o nível 3.
 - 4 tipos de monstro
 - 1 história: campanha curta de 3 cenários para testar o fluxo inteiro
 

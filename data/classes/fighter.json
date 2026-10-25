@@ -1,0 +1,44 @@
+{
+  "id": "fighter",
+  "name": "class.fighter.name",
+  "description": "class.fighter.description",
+  "primary_attribute": "str",
+  "hand_size": 10,
+  "hit_points": {
+    "base": 10,
+    "per_level": 6
+  },
+  "armor_class": {
+    "base": 16,
+    "max_dex_bonus": 0
+  },
+  "saving_throws": [
+    "str",
+    "con"
+  ],
+  "skill_choice": {
+    "count": 2,
+    "options": [
+      "acrobatics",
+      "animal_handling",
+      "athletics",
+      "history",
+      "insight",
+      "intimidation",
+      "perception",
+      "survival"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 15,
+    "dex": 13,
+    "con": 14,
+    "int": 8,
+    "wis": 12,
+    "cha": 10
+  },
+  "visual": {
+    "color": "#8a6d4b",
+    "portrait": "portraits/fighter.png"
+  }
+}

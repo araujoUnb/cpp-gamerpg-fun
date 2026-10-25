@@ -1,0 +1,41 @@
+{
+  "id": "sorcerer",
+  "name": "class.sorcerer.name",
+  "description": "class.sorcerer.description",
+  "primary_attribute": "cha",
+  "hand_size": 8,
+  "hit_points": {
+    "base": 6,
+    "per_level": 4
+  },
+  "armor_class": {
+    "base": 10
+  },
+  "saving_throws": [
+    "con",
+    "cha"
+  ],
+  "skill_choice": {
+    "count": 2,
+    "options": [
+      "arcana",
+      "deception",
+      "insight",
+      "intimidation",
+      "persuasion",
+      "religion"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 8,
+    "dex": 13,
+    "con": 14,
+    "int": 10,
+    "wis": 12,
+    "cha": 15
+  },
+  "visual": {
+    "color": "#c8483f",
+    "portrait": "portraits/sorcerer.png"
+  }
+}

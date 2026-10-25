@@ -1,0 +1,44 @@
+{
+  "id": "ranger",
+  "name": "class.ranger.name",
+  "description": "class.ranger.description",
+  "primary_attribute": "dex",
+  "hand_size": 11,
+  "hit_points": {
+    "base": 10,
+    "per_level": 6
+  },
+  "armor_class": {
+    "base": 14,
+    "max_dex_bonus": 2
+  },
+  "saving_throws": [
+    "str",
+    "dex"
+  ],
+  "skill_choice": {
+    "count": 3,
+    "options": [
+      "animal_handling",
+      "athletics",
+      "insight",
+      "investigation",
+      "nature",
+      "perception",
+      "stealth",
+      "survival"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 12,
+    "dex": 15,
+    "con": 13,
+    "int": 8,
+    "wis": 14,
+    "cha": 10
+  },
+  "visual": {
+    "color": "#3f7a5a",
+    "portrait": "portraits/ranger.png"
+  }
+}

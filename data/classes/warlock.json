@@ -1,0 +1,42 @@
+{
+  "id": "warlock",
+  "name": "class.warlock.name",
+  "description": "class.warlock.description",
+  "primary_attribute": "cha",
+  "hand_size": 9,
+  "hit_points": {
+    "base": 8,
+    "per_level": 5
+  },
+  "armor_class": {
+    "base": 11
+  },
+  "saving_throws": [
+    "wis",
+    "cha"
+  ],
+  "skill_choice": {
+    "count": 2,
+    "options": [
+      "arcana",
+      "deception",
+      "history",
+      "intimidation",
+      "investigation",
+      "nature",
+      "religion"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 8,
+    "dex": 13,
+    "con": 14,
+    "int": 12,
+    "wis": 10,
+    "cha": 15
+  },
+  "visual": {
+    "color": "#6b3fa0",
+    "portrait": "portraits/warlock.png"
+  }
+}

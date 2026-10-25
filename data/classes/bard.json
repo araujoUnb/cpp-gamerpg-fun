@@ -1,0 +1,34 @@
+{
+  "id": "bard",
+  "name": "class.bard.name",
+  "description": "class.bard.description",
+  "primary_attribute": "cha",
+  "hand_size": 11,
+  "hit_points": {
+    "base": 8,
+    "per_level": 5
+  },
+  "armor_class": {
+    "base": 11
+  },
+  "saving_throws": [
+    "dex",
+    "cha"
+  ],
+  "skill_choice": {
+    "count": 3,
+    "options": "any"
+  },
+  "suggested_attributes": {
+    "str": 8,
+    "dex": 14,
+    "con": 13,
+    "int": 10,
+    "wis": 12,
+    "cha": 15
+  },
+  "visual": {
+    "color": "#c0699b",
+    "portrait": "portraits/bard.png"
+  }
+}

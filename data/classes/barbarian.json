@@ -1,0 +1,42 @@
+{
+  "id": "barbarian",
+  "name": "class.barbarian.name",
+  "description": "class.barbarian.description",
+  "primary_attribute": "str",
+  "hand_size": 9,
+  "hit_points": {
+    "base": 12,
+    "per_level": 7
+  },
+  "armor_class": {
+    "base": 10,
+    "extra_attribute": "con"
+  },
+  "saving_throws": [
+    "str",
+    "con"
+  ],
+  "skill_choice": {
+    "count": 2,
+    "options": [
+      "animal_handling",
+      "athletics",
+      "intimidation",
+      "nature",
+      "perception",
+      "survival"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 15,
+    "dex": 13,
+    "con": 14,
+    "int": 8,
+    "wis": 12,
+    "cha": 10
+  },
+  "visual": {
+    "color": "#b5452f",
+    "portrait": "portraits/barbarian.png"
+  }
+}

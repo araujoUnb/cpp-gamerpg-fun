@@ -1,0 +1,41 @@
+{
+  "id": "wizard",
+  "name": "class.wizard.name",
+  "description": "class.wizard.description",
+  "primary_attribute": "int",
+  "hand_size": 8,
+  "hit_points": {
+    "base": 6,
+    "per_level": 4
+  },
+  "armor_class": {
+    "base": 10
+  },
+  "saving_throws": [
+    "int",
+    "wis"
+  ],
+  "skill_choice": {
+    "count": 2,
+    "options": [
+      "arcana",
+      "history",
+      "insight",
+      "investigation",
+      "medicine",
+      "religion"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 8,
+    "dex": 13,
+    "con": 14,
+    "int": 15,
+    "wis": 12,
+    "cha": 10
+  },
+  "visual": {
+    "color": "#3b6fb6",
+    "portrait": "portraits/wizard.png"
+  }
+}

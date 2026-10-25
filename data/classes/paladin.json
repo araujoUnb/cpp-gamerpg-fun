@@ -1,0 +1,42 @@
+{
+  "id": "paladin",
+  "name": "class.paladin.name",
+  "description": "class.paladin.description",
+  "primary_attribute": "str",
+  "hand_size": 9,
+  "hit_points": {
+    "base": 10,
+    "per_level": 6
+  },
+  "armor_class": {
+    "base": 18,
+    "max_dex_bonus": 0
+  },
+  "saving_throws": [
+    "wis",
+    "cha"
+  ],
+  "skill_choice": {
+    "count": 2,
+    "options": [
+      "athletics",
+      "insight",
+      "intimidation",
+      "medicine",
+      "persuasion",
+      "religion"
+    ]
+  },
+  "suggested_attributes": {
+    "str": 15,
+    "dex": 8,
+    "con": 13,
+    "int": 10,
+    "wis": 12,
+    "cha": 14
+  },
+  "visual": {
+    "color": "#d9d3c0",
+    "portrait": "portraits/paladin.png"
+  }
+}
