@@ -139,6 +139,15 @@ Começar com poucas: envenenado, atordoado, imobilizado, fortalecido, protegido.
 - Linha de visão e alcance calculados no núcleo
 - Pathfinding A* para heróis e monstros
 
+Detalhes definidos na etapa 5:
+
+- Terreno difícil custa 2 de movimento. Salto ignora o custo do terreno.
+- Porta fechada bloqueia a visão. Só herói entra nela, e ela abre na hora. Monstros não abrem portas.
+- Armadilha dispara uma vez, quando a criatura entra na casa (no salto, só se for a casa de chegada), e depois some. Empurrar pode jogar um monstro numa armadilha, mas não através de uma porta.
+- O herói escolhe o destino, e o caminho percorrido é o mais barato. Entre caminhos de mesmo custo, vale o que passa por menos armadilhas. Monstros evitam armadilhas.
+- Ataque, cura e condição com alcance maior que 1 exigem linha de visão, traçada entre os centros das casas. Linhas que passam rente às arestas são livres se um dos lados estiver livre, e a visão é sempre simétrica.
+- O evento de movimento traz o caminho casa a casa, para o frontend animar.
+
 ### Campanha e histórias
 
 - Uma campanha é uma sequência de cenários ligados por trechos de história em ink

@@ -114,22 +114,45 @@ scenario::ScenarioDef scenario_from_json(const json& j, const Content& content, 
 
     const std::string mctx = ctx + ".map";
     const auto& map = field(j, "map", ctx);
-    only_keys(map, {"radius", "obstacles"}, mctx);
+    only_keys(map, {"radius", "obstacles", "difficult", "doors", "traps"}, mctx);
     const int radius = get_int(map, "radius", mctx);
     if (radius < 1 || radius > 30) fail(mctx, "'radius' must be between 1 and 30");
-    std::set<combat::Hex> obstacles;
-    if (map.contains("obstacles")) {
-        for (const auto& o : get_array(map, "obstacles", mctx)) {
-            const auto h = hex_from_json(o, mctx + ".obstacles");
-            if (combat::distance(h, {}) > radius) fail(mctx, "obstacle outside the map");
-            obstacles.insert(h);
+    s.map = combat::HexMap::hexagon(radius);
+
+    // Each special hex has exactly one kind of terrain.
+    std::set<combat::Hex> special;
+    auto mark = [&](combat::Hex h, combat::Terrain t, const std::string& c) {
+        if (!s.map.contains(h)) fail(c, "hex outside the map");
+        if (!special.insert(h).second) fail(c, "hex [" + std::to_string(h.q) + ", " + std::to_string(h.r) + "] has two terrains");
+        s.map.set_terrain(h, t);
+    };
+    const std::pair<const char*, combat::Terrain> kinds[] = {
+        {"obstacles", combat::Terrain::Obstacle}, {"difficult", combat::Terrain::Difficult}, {"doors", combat::Terrain::Door}};
+    for (const auto& [key, terrain] : kinds) {
+        if (!map.contains(key)) continue;
+        for (const auto& o : get_array(map, key, mctx)) mark(hex_from_json(o, mctx + "." + key), terrain, mctx + "." + key);
+    }
+    if (map.contains("traps")) {
+        const std::string tctx = mctx + ".traps";
+        for (const auto& t : get_array(map, "traps", mctx)) {
+            only_keys(t, {"hex", "damage", "conditions"}, tctx);
+            scenario::TrapDef trap;
+            trap.hex = hex_from_json(field(t, "hex", tctx), tctx);
+            trap.damage = get_int(t, "damage", tctx);
+            if (trap.damage < 0) fail(tctx, "'damage' must not be negative");
+            if (t.contains("conditions")) trap.conditions = condition_list_from_json(t["conditions"], content.rules, tctx);
+            if (trap.damage == 0 && trap.conditions.empty()) fail(tctx, "a trap needs damage or conditions");
+            mark(trap.hex, combat::Terrain::Trap, tctx);
+            s.traps.push_back(std::move(trap));
         }
     }
-    s.map = combat::HexMap::hexagon(radius, std::move(obstacles));
 
     std::set<combat::Hex> used;
     auto place = [&](combat::Hex h, const std::string& c) {
-        if (!s.map.walkable(h)) fail(c, "hex [" + std::to_string(h.q) + ", " + std::to_string(h.r) + "] is not walkable");
+        const auto t = s.map.terrain(h);
+        if (!s.map.contains(h) || (t != combat::Terrain::Open && t != combat::Terrain::Difficult)) {
+            fail(c, "hex [" + std::to_string(h.q) + ", " + std::to_string(h.r) + "] must be open ground");
+        }
         if (!used.insert(h).second) {
             fail(c, "hex [" + std::to_string(h.q) + ", " + std::to_string(h.r) + "] is used twice");
         }

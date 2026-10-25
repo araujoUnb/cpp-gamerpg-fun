@@ -4,6 +4,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace rpg::combat {
 
@@ -18,7 +19,10 @@ namespace rpg::combat {
 //   TurnSkipped         actor, detail = reason ("stunned", "down")
 //   HalfUsed            actor, detail = card id, value = 0 top / 1 bottom, flag = basic action
 //   NoTarget            actor, detail = action type ("attack", "heal", "condition"): nothing in range
-//   Moved               actor, from, to, flag = forced (push/pull)
+//   Moved               actor, from, to, path = hexes entered in order (ends at `to`),
+//                       flag = forced (push/pull), critical = jump
+//   DoorOpened          actor, to = door hex
+//   TrapTriggered       target, to = trap hex, value = damage
 //   AttackRolled        actor, target, roll = natural d20, total, target_number = AC,
 //                       flag = hit, critical, value = 1 advantage / -1 disadvantage / 0
 //   Damaged             target, value = damage, value2 = HP left
@@ -37,6 +41,7 @@ namespace rpg::combat {
 struct Event {
     enum class Kind {
         RoundStarted, CardsSelected, MonsterCardDrawn, TurnStarted, TurnSkipped, HalfUsed, NoTarget, Moved,
+        DoorOpened, TrapTriggered,
         AttackRolled, Damaged, Healed, ConditionApplied, ConditionResisted, ConditionEnded,
         MonsterDied, HeroDowned, DeathSave, HeroStabilized, HeroRevived, HeroDied, HeroExhausted,
         CardLost, LongRested, ShortRested, RoundEnded, Victory, Defeat
@@ -55,6 +60,7 @@ struct Event {
     bool critical = false;
     Hex from;
     Hex to;
+    std::vector<Hex> path;
 };
 
 std::string_view event_kind_id(Event::Kind k);

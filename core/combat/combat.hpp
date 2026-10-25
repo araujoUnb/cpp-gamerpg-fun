@@ -170,6 +170,14 @@ private:
     bool hero_occupies(Hex h) const;
     bool monster_occupies(Hex h) const;
     bool occupied(Hex h) const { return hero_occupies(h) || monster_occupies(h); }
+    // Monsters avoid traps and cannot open doors.
+    bool monster_can_enter(Hex h) const;
+    // Within range and in line of sight.
+    bool in_reach(Hex from, Hex to, int range) const;
+    // Moves a creature along `path` hex by hex, opening doors (heroes) and
+    // springing traps; stops early if the creature falls.
+    void walk(bool hero, std::size_t index, const std::vector<Hex>& path, bool jump, bool forced);
+    void trigger_trap(Hex h, bool hero, std::size_t index);
     std::vector<Hex> hero_move_options(std::size_t hero, const cards::ActionDef& a) const;
     std::vector<std::string> hero_target_options(std::size_t hero, const cards::ActionDef& a) const;
 

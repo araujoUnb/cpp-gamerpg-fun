@@ -32,19 +32,8 @@ TargetKind target_from_json(const json& j, const std::string& where) {
 
 std::vector<cards::ConditionApply> conditions_from_json(const json& j, const character::Ruleset& rules,
                                                         const std::string& where) {
-    std::vector<cards::ConditionApply> out;
-    if (!j.contains("conditions")) return out;
-    for (const auto& c : get_array(j, "conditions", where)) {
-        const std::string ctx = where + ".conditions";
-        only_keys(c, {"id", "rounds"}, ctx);
-        cards::ConditionApply apply;
-        apply.id = get_string(c, "id", ctx);
-        apply.rounds = get_int(c, "rounds", ctx);
-        if (!rules.find_condition(apply.id)) fail(ctx, "unknown condition '" + apply.id + "'");
-        if (apply.rounds < 1) fail(ctx, "'rounds' must be at least 1");
-        out.push_back(std::move(apply));
-    }
-    return out;
+    if (!j.contains("conditions")) return {};
+    return condition_list_from_json(get_array(j, "conditions", where), rules, where + ".conditions");
 }
 
 void require_at_least(int value, int min, const char* key, const std::string& where) {
@@ -64,6 +53,22 @@ cards::CardHalf half_from_json(const json& j, const character::Ruleset& rules, c
 }
 
 }  // namespace
+
+std::vector<cards::ConditionApply> condition_list_from_json(const json& arr, const character::Ruleset& rules,
+                                                            const std::string& where) {
+    if (!arr.is_array()) fail(where, "expected a list of conditions");
+    std::vector<cards::ConditionApply> out;
+    for (const auto& c : arr) {
+        only_keys(c, {"id", "rounds"}, where);
+        cards::ConditionApply apply;
+        apply.id = get_string(c, "id", where);
+        apply.rounds = get_int(c, "rounds", where);
+        if (!rules.find_condition(apply.id)) fail(where, "unknown condition '" + apply.id + "'");
+        if (apply.rounds < 1) fail(where, "'rounds' must be at least 1");
+        out.push_back(std::move(apply));
+    }
+    return out;
+}
 
 cards::ActionDef action_from_json(const json& j, const character::Ruleset& rules, const std::string& where) {
     require_object(j, where);

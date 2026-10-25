@@ -21,7 +21,8 @@ constexpr int kSaveVersion = 1;
 constexpr std::array kEventKinds{
     Event::Kind::RoundStarted,   Event::Kind::CardsSelected,     Event::Kind::MonsterCardDrawn,
     Event::Kind::TurnStarted,    Event::Kind::TurnSkipped,       Event::Kind::HalfUsed,
-    Event::Kind::NoTarget,       Event::Kind::Moved,             Event::Kind::AttackRolled,
+    Event::Kind::NoTarget,       Event::Kind::Moved,             Event::Kind::DoorOpened,
+    Event::Kind::TrapTriggered,  Event::Kind::AttackRolled,
     Event::Kind::Damaged,        Event::Kind::Healed,            Event::Kind::ConditionApplied,
     Event::Kind::ConditionResisted, Event::Kind::ConditionEnded, Event::Kind::MonsterDied,
     Event::Kind::HeroDowned,     Event::Kind::DeathSave,         Event::Kind::HeroStabilized,
@@ -109,12 +110,17 @@ json event_json(const Event& e) {
         j["from"] = hex_json(e.from);
         j["to"] = hex_json(e.to);
     }
+    if (!e.path.empty()) {
+        json path = json::array();
+        for (Hex h : e.path) path.push_back(hex_json(h));
+        j["path"] = path;
+    }
     return j;
 }
 
 Event event_from(const json& j, const std::string& where) {
     only_keys(j, {"kind", "actor", "target", "detail", "value", "value2", "roll", "total", "target_number", "flag",
-                  "critical", "from", "to"}, where);
+                  "critical", "from", "to", "path"}, where);
     Event e;
     const auto kind = get_string(j, "kind", where);
     const auto it = std::find_if(kEventKinds.begin(), kEventKinds.end(),
@@ -133,6 +139,9 @@ Event event_from(const json& j, const std::string& where) {
     e.critical = get_bool_or(j, "critical", false, where);
     if (j.contains("from")) e.from = hex_from(j["from"], where);
     if (j.contains("to")) e.to = hex_from(j["to"], where);
+    if (j.contains("path")) {
+        for (const auto& h : get_array(j, "path", where)) e.path.push_back(hex_from(h, where));
+    }
     return e;
 }
 
@@ -158,14 +167,26 @@ json Combat::to_json() const {
     json scenario{{"id", scenario_.id}, {"name", scenario_.name_key}};
     json hexes = json::array();
     for (Hex h : scenario_.map.hexes()) hexes.push_back(hex_json(h));
-    json obstacles = json::array();
-    for (Hex h : scenario_.map.obstacles()) obstacles.push_back(hex_json(h));
+    auto hex_list = [&](Terrain t) {
+        json out = json::array();
+        for (Hex h : scenario_.map.with_terrain(t)) out.push_back(hex_json(h));
+        return out;
+    };
+    json traps = json::array();
+    for (const auto& t : scenario_.traps) {
+        json conds = json::array();
+        for (const auto& c : t.conditions) conds.push_back({{"id", c.id}, {"rounds", c.rounds}});
+        traps.push_back({{"hex", hex_json(t.hex)}, {"damage", t.damage}, {"conditions", conds}});
+    }
     json starts = json::array();
     for (Hex h : scenario_.hero_starts) starts.push_back(hex_json(h));
     json spawns = json::array();
     for (const auto& m : scenario_.monsters) spawns.push_back({{"type", m.type}, {"hex", hex_json(m.hex)}});
     scenario["hexes"] = hexes;
-    scenario["obstacles"] = obstacles;
+    scenario["obstacles"] = hex_list(Terrain::Obstacle);
+    scenario["difficult"] = hex_list(Terrain::Difficult);
+    scenario["doors"] = hex_list(Terrain::Door);
+    scenario["traps"] = traps;
     scenario["hero_starts"] = starts;
     scenario["monsters"] = spawns;
 
@@ -246,17 +267,31 @@ Combat Combat::from_json(const data::Content& content, const json& j) {
     {
         const std::string ctx = where + ".scenario";
         const auto& s = field(j, "scenario", where);
-        only_keys(s, {"id", "name", "hexes", "obstacles", "hero_starts", "monsters"}, ctx);
+        only_keys(s, {"id", "name", "hexes", "obstacles", "difficult", "doors", "traps", "hero_starts", "monsters"}, ctx);
         c.scenario_.id = get_string(s, "id", ctx);
         c.scenario_.name_key = get_string(s, "name", ctx);
-        std::set<Hex> hexes, obstacles;
+        std::set<Hex> hexes;
         for (const auto& h : get_array(s, "hexes", ctx)) hexes.insert(hex_from(h, ctx));
-        for (const auto& h : get_array(s, "obstacles", ctx)) obstacles.insert(hex_from(h, ctx));
         if (hexes.empty()) fail(ctx, "the map has no hexes");
-        try {
-            c.scenario_.map = HexMap(std::move(hexes), std::move(obstacles));
-        } catch (const std::invalid_argument& e) {
-            fail(ctx, e.what());
+        c.scenario_.map = HexMap(std::move(hexes));
+        auto& map = c.scenario_.map;
+        std::set<Hex> special;
+        auto mark = [&](Hex h, Terrain t) {
+            if (!map.contains(h)) fail(ctx, "terrain outside the map");
+            if (!special.insert(h).second) fail(ctx, "a hex has two terrains");
+            map.set_terrain(h, t);
+        };
+        for (const auto& h : get_array(s, "obstacles", ctx)) mark(hex_from(h, ctx), Terrain::Obstacle);
+        for (const auto& h : get_array(s, "difficult", ctx)) mark(hex_from(h, ctx), Terrain::Difficult);
+        for (const auto& h : get_array(s, "doors", ctx)) mark(hex_from(h, ctx), Terrain::Door);
+        for (const auto& t : get_array(s, "traps", ctx)) {
+            only_keys(t, {"hex", "damage", "conditions"}, ctx);
+            scenario::TrapDef trap;
+            trap.hex = hex_from(field(t, "hex", ctx), ctx);
+            trap.damage = get_int(t, "damage", ctx);
+            trap.conditions = data::condition_list_from_json(field(t, "conditions", ctx), rules, ctx);
+            mark(trap.hex, Terrain::Trap);
+            c.scenario_.traps.push_back(std::move(trap));
         }
         for (const auto& h : get_array(s, "hero_starts", ctx)) c.scenario_.hero_starts.push_back(hex_from(h, ctx));
         for (const auto& m : get_array(s, "monsters", ctx)) {

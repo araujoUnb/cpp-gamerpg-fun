@@ -95,11 +95,14 @@ data::Content test_content() {
     c.cards.add(card("stun", 20, {attack(1, 1, {{"stunned", 1}})}, {move(1)}));
     c.cards.add(card("heal", 30, {heal(3, TargetKind::Ally, 3)}, {move(1)}));
     c.cards.add(card("big", 40, {attack(5)}, {move(3)}, true));
+    c.cards.add(card("shot", 15, {attack(2, 4)}, {move(2)}));
 
     // Never moves, never hurts: heals itself at full HP.
     c.monsters.add(monster("dummy", 1, 40, 0, 0, {"wait", "wait", 99, {heal(1)}, false}));
     // Strikes first, almost always hits, almost never gets hit.
     c.monsters.add(monster("biter", 30, 5, 30, 0, {"bite", "bite", 1, {attack(6)}, false}));
+    // Walks toward the heroes, hits for nothing.
+    c.monsters.add(monster("walker", 30, 5, 0, 0, {"walk", "walk", 50, {move(3), attack(1)}, false}));
     return c;
 }
 
@@ -108,6 +111,12 @@ character::CharacterSheet hero(const data::Content& c, const std::string& id) {
     a.set(Attribute::Strength, 16);  // +3
     auto s = character::create_character(c.rules, id, id, c.classes.get("tester"), a, {});
     s.deck = {"tester.hit", "tester.stun", "tester.heal", "tester.big"};
+    return s;
+}
+
+character::CharacterSheet hero_with(const data::Content& c, const std::string& id, std::vector<std::string> deck) {
+    auto s = hero(c, id);
+    s.deck = std::move(deck);
     return s;
 }
 
@@ -375,6 +384,11 @@ TEST_CASE("The real content and the arena scenario load") {
     const auto s = data::load_scenario(kData / "scenarios" / "arena.json", content);
     CHECK(s.monsters.size() == 3);
     CHECK(s.hero_starts.size() == 2);
+    const auto ruins = data::load_scenario(kData / "scenarios" / "ruins.json", content);
+    CHECK(ruins.traps.size() == 3);
+    CHECK(ruins.map.with_terrain(Terrain::Door).size() == 1);
+    CHECK_FALSE(ruins.map.with_terrain(Terrain::Difficult).empty());
+    CHECK(content.text.contains(ruins.name_key));
     for (const auto& id : content.monsters.ids()) {
         const auto& m = content.monsters.get(id);
         CHECK(content.text.contains(m.name_key));
@@ -391,9 +405,10 @@ TEST_CASE("The real content and the arena scenario load") {
     CHECK(content.text.contains(s.name_key));
 }
 
-TEST_CASE("Random play on the arena always ends and keeps every invariant") {
+TEST_CASE("Random play on every scenario always ends and keeps every invariant") {
     const auto content = data::load_content(kData);
-    const auto s = data::load_scenario(kData / "scenarios" / "arena.json", content);
+    const scenario::ScenarioDef scenarios[] = {data::load_scenario(kData / "scenarios" / "arena.json", content),
+                                               data::load_scenario(kData / "scenarios" / "ruins.json", content)};
     std::map<Outcome, int> outcomes;
     for (std::uint64_t seed = 0; seed < 150; ++seed) {
         CAPTURE(seed);
@@ -402,7 +417,7 @@ TEST_CASE("Random play on the arena always ends and keeps every invariant") {
         std::vector<character::CharacterSheet> party;
         for (const auto& [id, cls] : parties[seed % 2]) party.push_back(real_hero(content, id, cls));
 
-        Combat c(content, s, party, seed);
+        Combat c(content, scenarios[(seed / 2) % 2], party, seed);
         dice::Rng chooser(seed * 7919 + 1);
         int decisions = 0;
         while (!c.finished()) {
@@ -466,12 +481,13 @@ TEST_CASE("The auto player wins the arena often enough") {
 
 TEST_CASE("Saving and loading at any point continues the exact same battle") {
     const auto content = data::load_content(kData);
-    const auto s = data::load_scenario(kData / "scenarios" / "arena.json", content);
+    const scenario::ScenarioDef scenarios[] = {data::load_scenario(kData / "scenarios" / "arena.json", content),
+                                               data::load_scenario(kData / "scenarios" / "ruins.json", content)};
     const AutoPlayer player;
     int saves = 0;
     for (std::uint64_t seed = 0; seed < 40; ++seed) {
         CAPTURE(seed);
-        Combat c(content, s, {real_hero(content, "h1", "rogue"), real_hero(content, "h2", "cleric")}, seed);
+        Combat c(content, scenarios[seed % 2], {real_hero(content, "h1", "rogue"), real_hero(content, "h2", "cleric")}, seed);
         dice::Rng chooser(seed + 100);
         // Mix of heuristic and random choices to visit many states.
         auto choose = [&](const Combat& x, dice::Rng& r) {
@@ -536,4 +552,97 @@ TEST_CASE("Broken saves are rejected") {
     bad = good;
     bad["extra"] = 1;
     CHECK_THROWS_AS(Combat::from_json(content, bad), data::DataError);
+}
+
+// --- Terrain -------------------------------------------------------------------
+
+TEST_CASE("Ranged attacks need line of sight") {
+    const auto content = test_content();
+    const auto deck = std::vector<std::string>{"tester.shot", "tester.hit", "tester.stun", "tester.heal"};
+    for (bool wall : {false, true}) {
+        CAPTURE(wall);
+        auto s = arena({{"dummy", {3, 0}}});
+        if (wall) s.map.set_terrain({2, 0}, Terrain::Obstacle);
+        Combat c(content, s, {hero_with(content, "a", deck)}, 1);
+        select(c, "tester.shot", "tester.hit");
+        play(c, "tester.shot", "tester.hit");
+        const auto* d = c.pending();
+        REQUIRE(d);
+        if (wall) {
+            CHECK(d->kind == Decision::Kind::Move);  // the attack had nothing to shoot at
+            CHECK(of_kind(c, Event::Kind::NoTarget).size() == 1);
+        } else {
+            CHECK(d->kind == Decision::Kind::Target);
+            CHECK(d->targets.front() == "dummy#1");
+        }
+    }
+}
+
+TEST_CASE("A trap fires once, then is gone") {
+    const auto content = test_content();
+    auto s = arena({{"dummy", {0, -3}}});
+    s.map.set_terrain({1, 0}, Terrain::Trap);
+    s.traps.push_back({{1, 0}, 3, {}});
+    Combat c(content, s, {hero(content, "a")}, 2);
+    select(c, "tester.hit", "tester.big");
+    play(c, "tester.big", "tester.hit");  // big's attack has no target; hit's bottom moves 2
+    const auto* d = c.pending();
+    REQUIRE(d);
+    REQUIRE(d->kind == Decision::Kind::Move);
+    c.decide(pick(*d, [&](std::size_t i) { return d->hexes[i] == Hex{1, 0}; }));
+
+    const auto traps = of_kind(c, Event::Kind::TrapTriggered);
+    REQUIRE(traps.size() == 1);
+    CHECK(traps[0].target == "a");
+    CHECK(traps[0].to == Hex{1, 0});
+    CHECK(c.heroes()[0].sheet.current_hp == 10 - 3);
+    CHECK(c.scenario().traps.empty());
+    CHECK(c.scenario().map.terrain({1, 0}) == Terrain::Open);
+}
+
+TEST_CASE("Movement goes around traps when it costs nothing more") {
+    const auto content = test_content();
+    auto s = arena({{"dummy", {0, -3}}});
+    s.map.set_terrain({1, 0}, Terrain::Trap);
+    s.traps.push_back({{1, 0}, 3, {}});
+    Combat c(content, s, {hero(content, "a")}, 2);
+    select(c, "tester.hit", "tester.big");
+    play(c, "tester.big", "tester.hit");
+    const auto* d = c.pending();
+    REQUIRE(d);
+    c.decide(pick(*d, [&](std::size_t i) { return d->hexes[i] == Hex{1, 1}; }));
+    const auto moved = of_kind(c, Event::Kind::Moved);
+    REQUIRE(moved.size() == 1);
+    CHECK(moved[0].path == std::vector<Hex>{{0, 1}, {1, 1}});
+    CHECK(of_kind(c, Event::Kind::TrapTriggered).empty());
+}
+
+TEST_CASE("Doors stop monsters and open when a hero walks in") {
+    const auto content = test_content();
+    auto s = arena({{"walker", {3, -1}}}, {{-1, 0}});
+    for (int r = -3; r <= 2; ++r) s.map.set_terrain({1, r}, Terrain::Obstacle);
+    s.map.set_terrain({1, 0}, Terrain::Door);
+    Combat c(content, s, {hero(content, "a")}, 4);
+
+    // Round 1: step next to the door. The walker cannot get through.
+    select(c, "tester.hit", "tester.big");
+    play(c, "tester.hit", "tester.big");  // no target for hit; big's bottom moves 3
+    REQUIRE(c.pending()->kind == Decision::Kind::Move);
+    c.decide(pick(*c.pending(), [&](std::size_t i) { return c.pending()->hexes[i] == Hex{0, 0}; }));
+    REQUIRE(c.pending()->kind == Decision::Kind::ShortRest);
+    c.decide(0);  // no rest
+    REQUIRE(c.round() == 2);
+    CHECK(c.monsters()[0].hex.q >= 2);
+    CHECK_FALSE(line_of_sight(c.scenario().map, {0, 0}, {2, 0}));
+
+    // Round 2: walk into the door.
+    select(c, "tester.stun", "tester.heal");
+    play(c, "tester.stun", "tester.heal");  // the stun attack has no target; heal's bottom moves 1
+    REQUIRE(c.pending()->kind == Decision::Kind::Move);
+    c.decide(pick(*c.pending(), [&](std::size_t i) { return c.pending()->hexes[i] == Hex{1, 0}; }));
+    const auto opened = of_kind(c, Event::Kind::DoorOpened);
+    REQUIRE(opened.size() == 1);
+    CHECK(opened[0].actor == "a");
+    CHECK(opened[0].to == Hex{1, 0});
+    CHECK(c.scenario().map.terrain({1, 0}) == Terrain::Open);
 }

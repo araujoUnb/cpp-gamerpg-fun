@@ -16,6 +16,10 @@ namespace rpg::data {
 
 using nlohmann::json;
 
+// [ { "id": "<condition>", "rounds": N }, ... ]
+std::vector<cards::ConditionApply> condition_list_from_json(const json& arr, const character::Ruleset& rules,
+                                                            const std::string& where = "conditions");
+
 // Unknown fields, unknown conditions, out-of-range values and actions with
 // fields that do not apply to their type are all rejected with DataError.
 cards::ActionDef action_from_json(const json& j, const character::Ruleset& rules,

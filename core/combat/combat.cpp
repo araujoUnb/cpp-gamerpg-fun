@@ -141,11 +141,17 @@ void Combat::apply(const Decision& d, std::size_t option) {
             break;
         }
         case Decision::Kind::Move: {
-            auto& h = heroes_[*hero_index(d.actor)];
+            const auto i = *hero_index(d.actor);
+            const Hex from = heroes_[i].hex;
             const Hex to = d.hexes[option];
-            if (to != h.hex) {
-                emit({.kind = Event::Kind::Moved, .actor = h.sheet.id, .from = h.hex, .to = to});
-                h.hex = to;
+            if (to != from) {
+                const auto& map = scenario_.map;
+                const bool jump = d.action && d.action->jump;
+                // Same cost as the options were computed with; avoids traps when it can.
+                const auto path = jump ? std::vector<Hex>{to}
+                                       : find_path(map, from, to, [&](Hex x) { return !monster_occupies(x); },
+                                                   [&](Hex x) { return map.terrain(x) == Terrain::Trap ? 1 : 0; });
+                walk(true, i, path, jump, false);
             }
             complete_action();
             break;
@@ -347,7 +353,7 @@ void Combat::complete_action() {
 bool Combat::step_hero_action(std::size_t i) {
     auto& p = progress_;
     auto& h = heroes_[i];
-    if (p.step >= p.steps.size()) {
+    if (p.step >= p.steps.size() || h.status != HeroStatus::Active) {  // done, or fell into a trap
         finish_hero_turn(i);
         return false;
     }
@@ -481,7 +487,7 @@ bool Combat::step_end_of_round() {
 
 std::optional<std::size_t> Combat::monster_focus(std::size_t mi, int range) const {
     const auto& m = monsters_[mi];
-    const auto dist = path_distances(scenario_.map, m.hex, [&](Hex h) { return !hero_occupies(h); });
+    const auto dist = path_distances(scenario_.map, m.hex, [&](Hex h) { return monster_can_enter(h); });
     std::optional<std::size_t> best;
     std::tuple<int, int, std::size_t> best_key{kFar, kFar, 0};
     for (std::size_t i = 0; i < heroes_.size(); ++i) {
@@ -489,7 +495,7 @@ std::optional<std::size_t> Combat::monster_focus(std::size_t mi, int range) cons
         if (h.status != HeroStatus::Active) continue;
         int cost = kFar;
         for (const auto& [x, d] : dist) {
-            if (distance(x, h.hex) <= range && (x == m.hex || !occupied(x))) cost = std::min(cost, d);
+            if ((x == m.hex || !occupied(x)) && in_reach(x, h.hex, range)) cost = std::min(cost, d);
         }
         const std::tuple<int, int, std::size_t> key{cost, distance(m.hex, h.hex), i};
         if (!best || key < best_key) {
@@ -503,24 +509,25 @@ std::optional<std::size_t> Combat::monster_focus(std::size_t mi, int range) cons
 Hex Combat::monster_destination(std::size_t mi, std::size_t target, int steps, int range, bool jump) const {
     const auto& m = monsters_[mi];
     const Hex goal = heroes_[target].hex;
-    const auto from_monster = jump ? std::vector<std::pair<Hex, int>>{}
-                                   : path_distances(scenario_.map, m.hex, [&](Hex h) { return !hero_occupies(h); }, steps);
-    const auto to_goal = path_distances(scenario_.map, goal, [&](Hex h) { return !hero_occupies(h); });
+    auto can_enter = [&](Hex h) { return monster_can_enter(h); };
+    const auto to_goal = path_distances(scenario_.map, goal, can_enter);
 
     std::vector<std::pair<Hex, int>> options;
     if (jump) {
         for (Hex h : scenario_.map.hexes()) {
-            if (scenario_.map.walkable(h) && distance(m.hex, h) <= steps) options.emplace_back(h, distance(m.hex, h));
+            if (scenario_.map.walkable(h) && monster_can_enter(h) && distance(m.hex, h) <= steps) {
+                options.emplace_back(h, distance(m.hex, h));
+            }
         }
     } else {
-        options = from_monster;
+        options = path_distances(scenario_.map, m.hex, can_enter, steps);
     }
 
     Hex best = m.hex;
     std::tuple<int, int, int> best_key{kFar, kFar, kFar};
     for (const auto& [h, cost] : options) {
         if (h != m.hex && occupied(h)) continue;
-        const bool in_range = distance(h, goal) <= range;
+        const bool in_range = in_reach(h, goal, range);
         // In range: fewest steps. Otherwise: closest walking distance to the hero.
         const std::tuple<int, int, int> key = in_range ? std::tuple{0, cost, 0}
                                                        : std::tuple{1, lookup(to_goal, h), distance(h, goal)};
@@ -566,8 +573,9 @@ void Combat::run_monster_turn(std::size_t mi) {
                 if (!target) break;
                 const Hex to = monster_destination(mi, *target, a.value, range, a.jump);
                 if (to != m.hex) {
-                    emit({.kind = Event::Kind::Moved, .actor = m.id, .from = m.hex, .to = to});
-                    m.hex = to;
+                    const auto path = a.jump ? std::vector<Hex>{to}
+                                             : find_path(scenario_.map, m.hex, to, [&](Hex x) { return monster_can_enter(x); });
+                    walk(false, mi, path, a.jump, false);
                 }
                 break;
             }
@@ -575,7 +583,7 @@ void Combat::run_monster_turn(std::size_t mi) {
                 std::vector<std::pair<int, std::size_t>> in_range;
                 for (std::size_t i = 0; i < heroes_.size(); ++i) {
                     const auto& h = heroes_[i];
-                    if (h.status == HeroStatus::Active && distance(m.hex, h.hex) <= a.range) {
+                    if (h.status == HeroStatus::Active && in_reach(m.hex, h.hex, a.range)) {
                         in_range.emplace_back(distance(m.hex, h.hex), i);
                     }
                 }
@@ -594,7 +602,7 @@ void Combat::run_monster_turn(std::size_t mi) {
                     std::optional<std::size_t> pick;
                     for (std::size_t i = 0; i < heroes_.size(); ++i) {
                         const auto& h = heroes_[i];
-                        if (h.status != HeroStatus::Active || distance(m.hex, h.hex) > a.range) continue;
+                        if (h.status != HeroStatus::Active || !in_reach(m.hex, h.hex, a.range)) continue;
                         if (!pick || distance(m.hex, h.hex) < distance(m.hex, heroes_[*pick].hex)) pick = i;
                     }
                     if (pick) apply_conditions(heroes_[*pick].sheet.id, heroes_[*pick].conditions, a.conditions, false, nullptr);
@@ -661,11 +669,11 @@ std::vector<std::string> Combat::hero_target_options(std::size_t i, const cards:
     std::vector<std::string> out;
     if (a.target == TargetKind::Enemy) {
         for (const auto& m : monsters_) {
-            if (m.alive && distance(from, m.hex) <= a.range && !taken(m.id)) out.push_back(m.id);
+            if (m.alive && in_reach(from, m.hex, a.range) && !taken(m.id)) out.push_back(m.id);
         }
     } else {
         for (const auto& h : heroes_) {
-            if (h.on_board() && distance(from, h.hex) <= a.range && !taken(h.sheet.id)) out.push_back(h.sheet.id);
+            if (h.on_board() && in_reach(from, h.hex, a.range) && !taken(h.sheet.id)) out.push_back(h.sheet.id);
         }
     }
     return out;
@@ -802,21 +810,88 @@ void Combat::tick_conditions(const std::string& who, std::vector<ActiveCondition
 }
 
 void Combat::force_move(std::size_t mi, Hex attacker, int steps, bool push) {
-    auto& m = monsters_[mi];
-    const Hex start = m.hex;
+    const auto& map = scenario_.map;
+    Hex cur = monsters_[mi].hex;
+    std::vector<Hex> path;
     for (int s = 0; s < steps; ++s) {
-        const int here = distance(attacker, m.hex);
+        const int here = distance(attacker, cur);
         std::optional<Hex> best;
-        for (Hex n : neighbors(m.hex)) {
-            if (!scenario_.map.walkable(n) || occupied(n) || n == attacker) continue;
+        for (Hex n : neighbors(cur)) {
+            // Can be pushed into traps, but not through closed doors.
+            if (!map.walkable(n) || map.terrain(n) == Terrain::Door || occupied(n) || n == attacker) continue;
             const int d = distance(attacker, n);
             if (push ? d <= here : d >= here) continue;
             if (!best || n < *best) best = n;
         }
         if (!best) break;
-        m.hex = *best;
+        path.push_back(*best);
+        cur = *best;
     }
-    if (m.hex != start) emit({.kind = Event::Kind::Moved, .actor = m.id, .flag = true, .from = start, .to = m.hex});
+    walk(false, mi, path, false, true);
+}
+
+void Combat::walk(bool hero, std::size_t index, const std::vector<Hex>& path, bool jump, bool forced) {
+    auto& map = scenario_.map;
+    const std::string id = hero ? heroes_[index].sheet.id : monsters_[index].id;
+    auto pos = [&]() -> Hex& { return hero ? heroes_[index].hex : monsters_[index].hex; };
+    auto standing = [&] { return hero ? heroes_[index].status == HeroStatus::Active : monsters_[index].alive; };
+
+    // Moved events are split at doors and traps so a frontend can animate each part.
+    Hex segment_from = pos();
+    std::vector<Hex> segment;
+    auto flush = [&] {
+        if (segment.empty()) return;
+        emit({.kind = Event::Kind::Moved, .actor = id, .flag = forced, .critical = jump, .from = segment_from,
+              .to = segment.back(), .path = segment});
+        segment_from = segment.back();
+        segment.clear();
+    };
+    for (std::size_t k = 0; k < path.size(); ++k) {
+        const Hex h = path[k];
+        const bool landing = k + 1 == path.size();
+        pos() = h;
+        segment.push_back(h);
+        const auto t = map.terrain(h);
+        if (t == Terrain::Door && hero) {
+            flush();
+            map.set_terrain(h, Terrain::Open);
+            emit({.kind = Event::Kind::DoorOpened, .actor = id, .to = h});
+        } else if (t == Terrain::Trap && (!jump || landing)) {
+            flush();
+            trigger_trap(h, hero, index);
+            if (!standing() || finished()) return;
+        }
+    }
+    flush();
+}
+
+void Combat::trigger_trap(Hex h, bool hero, std::size_t index) {
+    const auto* def = scenario_.trap_at(h);
+    if (!def) return;
+    const scenario::TrapDef trap = *def;
+    scenario_.traps.erase(std::find_if(scenario_.traps.begin(), scenario_.traps.end(),
+                                       [&](const scenario::TrapDef& t) { return t.hex == h; }));
+    scenario_.map.set_terrain(h, Terrain::Open);
+    if (hero) {
+        auto& target = heroes_[index];
+        emit({.kind = Event::Kind::TrapTriggered, .target = target.sheet.id, .value = trap.damage, .to = h});
+        if (trap.damage > 0) damage_hero(index, trap.damage, false);
+        if (target.status == HeroStatus::Active) apply_conditions(target.sheet.id, target.conditions, trap.conditions, false, nullptr);
+    } else {
+        auto& target = monsters_[index];
+        emit({.kind = Event::Kind::TrapTriggered, .target = target.id, .value = trap.damage, .to = h});
+        if (trap.damage > 0) damage_monster(index, trap.damage);
+        if (target.alive) apply_conditions(target.id, target.conditions, trap.conditions, false, &def_of(target));
+    }
+}
+
+bool Combat::monster_can_enter(Hex h) const {
+    const auto t = scenario_.map.terrain(h);
+    return t != Terrain::Door && t != Terrain::Trap && !hero_occupies(h);
+}
+
+bool Combat::in_reach(Hex from, Hex to, int range) const {
+    return distance(from, to) <= range && line_of_sight(scenario_.map, from, to);
 }
 
 void Combat::knock_out_selection(std::size_t hi) {
@@ -871,6 +946,8 @@ std::string_view event_kind_id(Event::Kind k) {
         case Event::Kind::HalfUsed: return "half_used";
         case Event::Kind::NoTarget: return "no_target";
         case Event::Kind::Moved: return "moved";
+        case Event::Kind::DoorOpened: return "door_opened";
+        case Event::Kind::TrapTriggered: return "trap_triggered";
         case Event::Kind::AttackRolled: return "attack_rolled";
         case Event::Kind::Damaged: return "damaged";
         case Event::Kind::Healed: return "healed";

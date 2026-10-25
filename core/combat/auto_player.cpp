@@ -163,7 +163,8 @@ std::size_t AutoPlayer::choose(const Combat& c, const Decision& d) const {
                               cls.primary == character::Attribute::Dexterity) ? 1 : 3;
             for (std::size_t i = 0; i < d.hexes.size(); ++i) {
                 const int dist = nearest_monster(c, d.hexes[i]);
-                consider(i, -std::abs(dist - want) * 10 - distance(hero.hex, d.hexes[i]));
+                const bool trap = c.scenario().map.terrain(d.hexes[i]) == Terrain::Trap;
+                consider(i, -std::abs(dist - want) * 10 - distance(hero.hex, d.hexes[i]) - (trap ? 100 : 0));
             }
             break;
         }

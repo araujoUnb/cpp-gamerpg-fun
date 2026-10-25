@@ -81,7 +81,23 @@ std::optional<Options> parse_args(int argc, char** argv) {
 
 class Ui {
 public:
-    explicit Ui(const Combat& c) : c_(c), text_(c.content().text) {}
+    // Each monster type gets a distinct letter on the map: the first letter of its id not taken yet.
+    explicit Ui(const Combat& c) : c_(c), text_(c.content().text) {
+        for (const auto& m : c.monsters()) {
+            if (letters_.count(m.type)) continue;
+            for (char ch : m.type + "abcdefghijklmnopqrstuvwxyz") {
+                const bool used = std::any_of(letters_.begin(), letters_.end(), [&](const auto& p) { return p.second == ch; });
+                if (ch >= 'a' && ch <= 'z' && !used) {
+                    letters_[m.type] = ch;
+                    break;
+                }
+            }
+        }
+    }
+
+    std::string mark(const combat::MonsterState& m) const {
+        return std::string(1, letters_.at(m.type)) + m.id.substr(m.id.find('#') + 1);
+    }
 
     std::string name(const std::string& id) const {
         for (const auto& h : c_.heroes()) {
@@ -151,7 +167,7 @@ public:
         }
         for (const auto& m : c_.monsters()) {
             if (!m.alive) continue;
-            marks[m.hex] = std::string(1, m.type[0]) + m.id.substr(m.id.find('#') + 1);
+            marks[m.hex] = mark(m);
         }
         std::cout << '\n';
         for (int r = -radius; r <= radius; ++r) {
@@ -159,7 +175,14 @@ public:
             for (int q = -radius; q <= radius; ++q) {
                 const Hex h{q, r};
                 if (!map.contains(h)) continue;
-                std::string cell = map.is_obstacle(h) ? "##" : " .";
+                std::string cell = " .";
+                switch (map.terrain(h)) {
+                    case combat::Terrain::Obstacle: cell = "##"; break;
+                    case combat::Terrain::Difficult: cell = " ~"; break;
+                    case combat::Terrain::Trap: cell = " ^"; break;
+                    case combat::Terrain::Door: cell = "[]"; break;
+                    case combat::Terrain::Open: break;
+                }
                 if (marks.count(h)) cell = marks[h];
                 std::cout << cell << "  ";
             }
@@ -190,7 +213,7 @@ public:
         for (const auto& m : c_.monsters()) {
             if (!m.alive) continue;
             const auto& def = content.monsters.get(m.type);
-            std::cout << "  " << m.type[0] << m.id.substr(m.id.find('#') + 1) << " " << name(m.id) << "  PV " << m.hp << "/"
+            std::cout << "  " << mark(m) << " " << name(m.id) << "  PV " << m.hp << "/"
                       << def.hit_points << "  CA " << def.armor_class;
             for (const auto& cond : m.conditions) std::cout << "  " << condition_name(cond.id) << "(" << cond.rounds << ")";
             std::cout << '\n';
@@ -218,6 +241,10 @@ public:
             case K::HalfUsed:
                 if (e.flag) std::cout << "  usa ação básica no lugar de " << card_name(e.detail) << '\n';
                 else std::cout << "  usa " << card_name(e.detail) << (e.value == 0 ? " (cima)" : " (baixo)") << '\n';
+                break;
+            case K::DoorOpened: std::cout << "  " << name(e.actor) << " abre a porta em (" << e.to.q << "," << e.to.r << ")\n"; break;
+            case K::TrapTriggered:
+                std::cout << "  " << name(e.target) << " cai numa armadilha em (" << e.to.q << "," << e.to.r << ")!\n";
                 break;
             case K::NoTarget: std::cout << "    (nenhum alvo ao alcance)\n"; break;
             case K::Moved:
@@ -318,6 +345,7 @@ public:
 private:
     const Combat& c_;
     const data::TextTable& text_;
+    std::map<std::string, char> letters_;
 };
 
 // Reads a number in [1, n]. Returns nullopt on end of input.
